@@ -25,6 +25,9 @@
     <junit.version>5.9.0</junit.version>
     <s3mock_2.13.version>0.2.6</s3mock_2.13.version>
     <testcontainers.version>1.17.6</testcontainers.version>
+    <sonar.exclusions>
+      **/src/main/java/org/folio/s3/client/S3ClientProperties.java
+    </sonar.exclusions>
   </properties>
 
   <dependencies>
