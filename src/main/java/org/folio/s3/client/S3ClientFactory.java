@@ -2,6 +2,9 @@ package org.folio.s3.client;
 
 public class S3ClientFactory {
 
+    private S3ClientFactory() {
+    }
+
     /**
      * Returns {@link FolioS3Client} implementation based on value of {@link S3ClientProperties#isAwsSdk()} value
      * @param s3ClientProperties - S3 client properties
