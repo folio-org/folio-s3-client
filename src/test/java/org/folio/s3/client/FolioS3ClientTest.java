@@ -41,7 +41,7 @@ class FolioS3ClientTest {
   private static final int SMALL_SIZE = 1024;
   public static final int LARGE_SIZE = MIN_MULTIPART_SIZE + 1;
 
-  private static int port;
+  private static String endpoint;
   private static FolioS3Client s3Client;
 
 
@@ -56,7 +56,7 @@ class FolioS3ClientTest {
         .withStartupTimeout(Duration.ofSeconds(10)));
     s3.start();
 
-    port = s3.getFirstMappedPort();
+    endpoint = format("http://%s:%s", s3.getHost(), s3.getFirstMappedPort());
 
   }
 
@@ -68,7 +68,7 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @ValueSource(booleans = { true, false })
   void testWriteReadDeleteFile(boolean isAwsSdk) throws IOException {
-    s3Client = S3ClientFactory.getS3Client(getS3ClientProperties(isAwsSdk, port));
+    s3Client = S3ClientFactory.getS3Client(getS3ClientProperties(isAwsSdk, endpoint));
     byte[] content = getRandomBytes(SMALL_SIZE);
     var original = List.of("directory_1/CSV_Data_1.csv", "directory_1/directory_2/CSV_Data_2.csv",
         "directory_1/directory_2/directory_3/CSV_Data_3.csv");
@@ -111,7 +111,7 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @ValueSource(booleans = { true, false })
   void testUploadReadDeleteFile(boolean isAwsSdk) throws IOException {
-    s3Client = S3ClientFactory.getS3Client(getS3ClientProperties(isAwsSdk, port));
+    s3Client = S3ClientFactory.getS3Client(getS3ClientProperties(isAwsSdk, endpoint));
     byte[] content = getRandomBytes(SMALL_SIZE);
     var fileOnStorage = "directory_1/CSV_Data_1.csv";
 
@@ -148,7 +148,7 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @CsvSource({ "true," + SMALL_SIZE, "true," + LARGE_SIZE, "false," + SMALL_SIZE, "false," + LARGE_SIZE })
   void testAppendFile(boolean isAwsSdk, int size) throws IOException {
-    s3Client = S3ClientFactory.getS3Client(getS3ClientProperties(isAwsSdk, port));
+    s3Client = S3ClientFactory.getS3Client(getS3ClientProperties(isAwsSdk, endpoint));
     byte[] content = getRandomBytes(size);
     var source = "directory_1/CSV_Data_1.csv";
 
@@ -171,7 +171,7 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @ValueSource(booleans = { true, false })
   void testNonExistingFileOperations(boolean isAwsSdk) {
-    s3Client = S3ClientFactory.getS3Client(getS3ClientProperties(isAwsSdk, port));
+    s3Client = S3ClientFactory.getS3Client(getS3ClientProperties(isAwsSdk, endpoint));
     var fakeLocalPath = "/fake-local-path";
     var fakeRemotePath = "/fake-remote-path";
     // upload
@@ -196,9 +196,9 @@ class FolioS3ClientTest {
       .isEmpty());
   }
 
-  public static S3ClientProperties getS3ClientProperties(boolean isAwsSdk, int port) {
+  public static S3ClientProperties getS3ClientProperties(boolean isAwsSdk, String endpoint) {
     return S3ClientProperties.builder()
-            .endpoint(format("http://localhost:%d", port))
+            .endpoint(endpoint)
             .secretKey(S3_SECRET_KEY)
             .accessKey(S3_ACCESS_KEY)
             .bucket(S3_BUCKET)
