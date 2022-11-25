@@ -10,7 +10,4 @@ public class S3ClientException extends RuntimeException {
         super(message, e);
     }
 
-    public S3ClientException(Exception e) {
-        super(e);
-    }
 }
