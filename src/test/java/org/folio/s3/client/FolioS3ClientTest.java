@@ -199,6 +199,7 @@ class FolioS3ClientTest {
   public static S3ClientProperties getS3ClientProperties(boolean isAwsSdk, String endpoint) {
     return S3ClientProperties.builder()
             .endpoint(endpoint)
+            .forcePathStyle(true)
             .secretKey(S3_SECRET_KEY)
             .accessKey(S3_ACCESS_KEY)
             .bucket(S3_BUCKET)

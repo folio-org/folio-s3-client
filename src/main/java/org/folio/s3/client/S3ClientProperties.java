@@ -31,8 +31,14 @@ public class S3ClientProperties {
    *  The credentials for access to object storage - secretKey.
    */
   private String secretKey;
+
   /**
    * Key that enables files merging in storage with using AWS SDK capabilities.
    */
   private boolean awsSdk;
+
+  /**
+   * True for bucket name in the path, false for bucket name in the virtual host name.
+   */
+  private boolean forcePathStyle;
 }
