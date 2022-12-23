@@ -179,7 +179,7 @@ public class MinioS3Client implements FolioS3Client {
     try (is) {
       return write(path, is, new HashMap<>());
     } catch (Exception e) {
-      throw new S3ClientException("Error writing");
+      throw new S3ClientException("Error writing", e);
     }
   }
 

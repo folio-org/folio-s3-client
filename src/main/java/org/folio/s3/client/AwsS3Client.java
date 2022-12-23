@@ -60,6 +60,7 @@ public class AwsS3Client extends MinioS3Client {
 
     client = S3Client.builder()
       .endpointOverride(URI.create(endpoint))
+      .forcePathStyle(s3ClientProperties.isForcePathStyle())
       .region(Region.of(region))
       .credentialsProvider(credentialsProvider)
       .build();
