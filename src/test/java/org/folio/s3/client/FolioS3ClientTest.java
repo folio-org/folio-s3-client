@@ -196,8 +196,8 @@ class FolioS3ClientTest {
     };
     s3Client = new MinioS3Client(properties, mock);
     s3Client.write(path, new ByteArrayInputStream(content));
-    var e = assertThrows(S3ClientException.class,
-        () -> s3Client.append(path, new ByteArrayInputStream(content)));
+    var stream = new ByteArrayInputStream(content);
+    var e = assertThrows(S3ClientException.class, () -> s3Client.append(path, stream));
     assertEquals("greetings from mock", e.getCause().getMessage());
     assertTrue(aborted.get());
   }

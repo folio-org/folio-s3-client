@@ -168,9 +168,10 @@ public class MinioS3Client implements FolioS3Client {
         try {
           client.abortMultipartUploadAsync(bucket, region, path, uploadId, null, null);
         } catch (Exception e2) {
-          // ignore
+          // ignore, because it is most likely the same as e (eg. network problem)
         }
       }
+      log.error("Cannot append data for path: {}", path, e);
       throw new S3ClientException("Cannot append data for path: " + path, e);
     }
   }
