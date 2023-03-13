@@ -27,7 +27,6 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
-
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
@@ -139,8 +138,7 @@ class FolioS3ClientTest {
 
     // Remove files files
     s3Client.remove(fileOnStorage);
-    assertEquals(0, s3Client.list("directory_1/")
-      .size());
+    assertEquals("[]", s3Client.list("directory_1/").toString());
 
     Files.deleteIfExists(tempFilePath);
   }
@@ -149,17 +147,18 @@ class FolioS3ClientTest {
   @CsvSource({ "true," + SMALL_SIZE, "true," + LARGE_SIZE, "false," + SMALL_SIZE, "false," + LARGE_SIZE })
   void testAppendFile(boolean isAwsSdk, int size) throws IOException {
     s3Client = S3ClientFactory.getS3Client(getS3ClientProperties(isAwsSdk, endpoint));
-    byte[] content = getRandomBytes(size);
+    byte[] content1 = getRandomBytes(size);
+    byte[] content2 = getRandomBytes(size + 1);
     var source = "directory_1/CSV_Data_1.csv";
 
     // Append to non-existing source
-    s3Client.append(source, new ByteArrayInputStream(content));
+    s3Client.append(source, new ByteArrayInputStream(content1));
 
     // Append to existing source
-    s3Client.append(source, new ByteArrayInputStream(content));
+    s3Client.append(source, new ByteArrayInputStream(content2));
 
     try (var is = s3Client.read(source)) {
-      assertTrue(Objects.deepEquals(ArrayUtils.addAll(content, content), is.readAllBytes()));
+      assertTrue(Objects.deepEquals(ArrayUtils.addAll(content1, content2), is.readAllBytes()));
     }
 
     s3Client.remove(source);

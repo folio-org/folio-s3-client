@@ -19,7 +19,7 @@
     <java.version>11</java.version>
     <lombok.version>1.18.24</lombok.version>
     <apache.common.version>3.12.0</apache.common.version>
-    <minio.version>8.4.6</minio.version>
+    <minio.version>8.5.2</minio.version>
     <log4j.version>2.19.0</log4j.version>
     <aws.sdk.version>2.19.2</aws.sdk.version>
     <junit.version>5.9.0</junit.version>
