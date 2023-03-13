@@ -7,6 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.google.common.collect.Multimap;
+import io.minio.AbortMultipartUploadResponse;
+import io.minio.ObjectWriteResponse;
+import io.minio.PutObjectArgs;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,19 +18,23 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
-
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.s3.client.impl.ExtendedMinioAsyncClient;
 import org.folio.s3.exception.S3ClientException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
+import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
@@ -162,8 +170,36 @@ class FolioS3ClientTest {
     }
 
     s3Client.remove(source);
-    System.out.println();
+  }
 
+  @Test
+  void testAppendAbortMinio() {
+    var path = "appendAbort.txt";
+    byte[] content = getRandomBytes(LARGE_SIZE);
+    var properties = getS3ClientProperties(false, endpoint);
+    AtomicBoolean aborted = new AtomicBoolean(false);
+    var mock = new ExtendedMinioAsyncClient(MinioS3Client.createClient(properties)) {
+      @SneakyThrows
+      public CompletableFuture<ObjectWriteResponse> putObject(PutObjectArgs args) {
+        if (args.extraQueryParams().isEmpty()) {
+          return super.putObject(args);
+        }
+        throw new NegativeArraySizeException("greetings from mock");
+      }
+      @SneakyThrows
+      public CompletableFuture<AbortMultipartUploadResponse> abortMultipartUploadAsync(
+          String bucketName, String region, String objectName, String uploadId,
+          Multimap<String, String> extraHeaders, Multimap<String, String> extraQueryParams) {
+        aborted.set(true);
+        return super.abortMultipartUploadAsync(bucketName, region, objectName, uploadId, extraHeaders, extraQueryParams);
+      }
+    };
+    s3Client = new MinioS3Client(properties, mock);
+    s3Client.write(path, new ByteArrayInputStream(content));
+    var e = assertThrows(S3ClientException.class,
+        () -> s3Client.append(path, new ByteArrayInputStream(content)));
+    assertEquals("greetings from mock", e.getCause().getMessage());
+    assertTrue(aborted.get());
   }
 
   @DisplayName("Files operations on non-existing file")

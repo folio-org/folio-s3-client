@@ -43,14 +43,23 @@ public class MinioS3Client implements FolioS3Client {
   private final String bucket;
   private final String region;
 
-  public MinioS3Client(S3ClientProperties properties) {
+  MinioS3Client(S3ClientProperties properties, ExtendedMinioAsyncClient client) {
+    region = properties.getRegion();
+    bucket = properties.getBucket();
+    this.client = client;
+    createBucketIfNotExists();
+  }
 
+  public MinioS3Client(S3ClientProperties properties) {
+    this(properties, createClient(properties));
+  }
+
+  static ExtendedMinioAsyncClient createClient(S3ClientProperties properties) {
     final String accessKey = properties.getAccessKey();
     final String secretKey = properties.getSecretKey();
     final String endpoint = properties.getEndpoint();
-
-    region = properties.getRegion();
-    bucket = properties.getBucket();
+    final String region = properties.getRegion();
+    final String bucket = properties.getBucket();
 
     log.info("Creating MinIO client endpoint {},region {},bucket {},accessKey {},secretKey {}.", endpoint, region, bucket,
         StringUtils.isNotBlank(accessKey) ? "<set>" : "<not set>", StringUtils.isNotBlank(secretKey) ? "<set>" : "<not set>");
@@ -70,11 +79,7 @@ public class MinioS3Client implements FolioS3Client {
     log.debug("{} MinIO credentials provider created.", provider.getClass()
       .getSimpleName());
     builder.credentialsProvider(provider);
-
-    client = ExtendedMinioAsyncClient.build(builder);
-
-    createBucketIfNotExists();
-
+    return ExtendedMinioAsyncClient.build(builder);
   }
 
   @SuppressWarnings("java:S2142")  // we wrap and rethrow InterruptedException
