@@ -31,21 +31,28 @@ public class AwsS3Client extends MinioS3Client {
 
   private final S3Client client;
   private final String bucket;
-  private final String region;
 
   private static final int PART_NUMBER_ONE = 1;
 
   private static final int PART_NUMBER_TWO = 2;
 
-  public AwsS3Client(S3ClientProperties s3ClientProperties) {
-
+  AwsS3Client(S3ClientProperties s3ClientProperties, S3Client client) {
     super(s3ClientProperties);
+    this.client = client;
+    bucket = s3ClientProperties.getBucket();
+    createBucketIfNotExists();
+  }
 
+  public AwsS3Client(S3ClientProperties s3ClientProperties) {
+    this(s3ClientProperties, createS3Client(s3ClientProperties));
+  }
+
+  static S3Client createS3Client(S3ClientProperties s3ClientProperties) {
     final String accessKey = s3ClientProperties.getAccessKey();
     final String endpoint = s3ClientProperties.getEndpoint();
     final String secretKey = s3ClientProperties.getSecretKey();
-    region = s3ClientProperties.getRegion();
-    bucket = s3ClientProperties.getBucket();
+    final String region = s3ClientProperties.getRegion();
+    final String bucket = s3ClientProperties.getBucket();
 
     log.info("Creating AWS SDK client endpoint {},region {},bucket {},accessKey {},secretKey {}.", endpoint, region, bucket,
         StringUtils.isNotBlank(accessKey) ? "<set>" : "<not set>", StringUtils.isNotBlank(secretKey) ? "<set>" : "<not set>");
@@ -59,14 +66,12 @@ public class AwsS3Client extends MinioS3Client {
       credentialsProvider = DefaultCredentialsProvider.create();
     }
 
-    client = S3Client.builder()
-      .endpointOverride(URI.create(endpoint))
-      .forcePathStyle(s3ClientProperties.isForcePathStyle())
-      .region(Region.of(region))
-      .credentialsProvider(credentialsProvider)
-      .build();
-
-    createBucketIfNotExists();
+    return S3Client.builder()
+        .endpointOverride(URI.create(endpoint))
+        .forcePathStyle(s3ClientProperties.isForcePathStyle())
+        .region(Region.of(region))
+        .credentialsProvider(credentialsProvider)
+        .build();
   }
 
   @Override

@@ -34,6 +34,15 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
+import software.amazon.awssdk.services.s3.model.UploadPartCopyRequest;
+import software.amazon.awssdk.services.s3.model.UploadPartCopyResponse;
+import software.amazon.awssdk.services.s3.model.UploadPartRequest;
+import software.amazon.awssdk.services.s3.model.UploadPartResponse;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 
@@ -198,6 +207,42 @@ class FolioS3ClientTest {
     s3Client.write(path, new ByteArrayInputStream(content));
     var stream = new ByteArrayInputStream(content);
     var e = assertThrows(S3ClientException.class, () -> s3Client.append(path, stream));
+    assertEquals("greetings from mock", e.getCause().getMessage());
+    assertTrue(aborted.get());
+  }
+
+  @Test
+  void testAppendAbortAws() {
+    var path = "appendAbort.txt";
+    byte[] content = getRandomBytes(LARGE_SIZE);
+    var properties = getS3ClientProperties(true, endpoint);
+    AtomicBoolean aborted = new AtomicBoolean(false);
+    var aws = AwsS3Client.createS3Client(properties);
+    var mock = new S3Client() {
+      public void close() {}
+      public String serviceName() {
+        return "serviceName";
+      }
+      public CreateMultipartUploadResponse createMultipartUpload(CreateMultipartUploadRequest request) {
+        return aws.createMultipartUpload(request);
+      }
+      public UploadPartCopyResponse uploadPartCopy(UploadPartCopyRequest request) {
+        return aws.uploadPartCopy(request);
+      }
+      public UploadPartResponse uploadPart(UploadPartRequest uploadPartRequest, RequestBody requestBody) {
+        throw new UnsupportedOperationException("greetings from mock");
+      }
+      public software.amazon.awssdk.services.s3.model.AbortMultipartUploadResponse
+          abortMultipartUpload(AbortMultipartUploadRequest request) {
+        aborted.set(true);
+        return aws.abortMultipartUpload(request);
+      }
+    };
+    s3Client = new AwsS3Client(properties, aws);
+    s3Client.write(path, new ByteArrayInputStream(content));
+    var mockClient = new AwsS3Client(properties, mock);
+    var stream = new ByteArrayInputStream(content);
+    var e = assertThrows(S3ClientException.class, () -> mockClient.append(path, stream));
     assertEquals("greetings from mock", e.getCause().getMessage());
     assertTrue(aborted.get());
   }
