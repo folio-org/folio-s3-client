@@ -17,6 +17,7 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CompletedMultipartUpload;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
@@ -85,6 +86,7 @@ public class AwsS3Client extends MinioS3Client {
   @Override
   public String append(String path, InputStream is) {
     log.debug("Appending with using AWS SDK client");
+    String uploadId = null;
     try (is) {
       if (list(path).isEmpty()) {
         log.debug("Appending non-existing file");
@@ -100,7 +102,7 @@ public class AwsS3Client extends MinioS3Client {
             .key(path)
             .build();
 
-          var uploadId = client.createMultipartUpload(createMultipartUploadRequest)
+          uploadId = client.createMultipartUpload(createMultipartUploadRequest)
             .uploadId();
 
           var uploadPartRequest1 = UploadPartCopyRequest.builder()
@@ -155,6 +157,18 @@ public class AwsS3Client extends MinioS3Client {
         }
       }
     } catch (Exception e) {
+      if (uploadId != null) {
+        try {
+          client.abortMultipartUpload(AbortMultipartUploadRequest.builder()
+              .bucket(bucket)
+              .key(path)
+              .uploadId(uploadId)
+              .build());
+        } catch (Exception e2) {
+          // ignore, because it is most likely the same as e (eg. network problem)
+        }
+      }
+      log.error("Cannot append data for path: {}", path, e);
       throw new S3ClientException("Cannot append data for path: " + path, e);
     }
   }
