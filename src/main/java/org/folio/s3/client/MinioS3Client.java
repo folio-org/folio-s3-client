@@ -77,26 +77,33 @@ public class MinioS3Client implements FolioS3Client {
 
   }
 
+  @SuppressWarnings("java:S2142")  // we wrap and rethrow InterruptedException
   void createBucketIfNotExists() {
     try {
-      if (StringUtils.isNotBlank(bucket) && !client.bucketExists(BucketExistsArgs.builder()
+      if (StringUtils.isBlank(bucket)) {
+        log.debug("Bucket name is null, empty or blank.");
+        return;
+      }
+      var exists = client.bucketExists(BucketExistsArgs.builder()
         .bucket(bucket)
         .region(region)
         .build())
-        .get()) {
-        client.makeBucket(MakeBucketArgs.builder()
+        .get();
+      if (Boolean.TRUE.equals(exists)) {
+        log.debug("Bucket already exists.");
+      }
+      client.makeBucket(MakeBucketArgs.builder()
           .bucket(bucket)
           .region(region)
           .build());
-        log.debug("Created {} bucket.", bucket);
-      } else {
-        log.debug("Bucket has already exist.");
-      }
+      log.debug("Created {} bucket.", bucket);
     } catch (Exception e) {
-      log.error("Error creating bucket: " + bucket, e);
+      log.error("Error creating bucket {}: {}", bucket, e.getMessage(), e);
+      throw new S3ClientException("Error creating bucket: " + bucket, e);
     }
   }
 
+  @SuppressWarnings("java:S2142")  // we wrap and rethrow InterruptedException
   private String upload(String path, String filename, Map<String, String> headers) {
     try {
       return client.uploadObject(UploadObjectArgs.builder()
@@ -118,6 +125,7 @@ public class MinioS3Client implements FolioS3Client {
     return upload(path, filename, new HashMap<>());
   }
 
+  @SuppressWarnings("java:S2142")  // we wrap and rethrow InterruptedException
   @Override
   public String append(String path, InputStream is) {
     String uploadId = null;
@@ -162,6 +170,7 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
+  @SuppressWarnings("java:S2142")  // we wrap and rethrow InterruptedException
   @Override
   public String write(String path, InputStream is) {
     log.debug("Writing with using Minio client");
@@ -180,6 +189,7 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
+  @SuppressWarnings("java:S2142")  // we wrap and rethrow InterruptedException
   @Override
   public String remove(String path) {
     try {
@@ -244,6 +254,7 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
+  @SuppressWarnings("java:S2142")  // we wrap and rethrow InterruptedException
   @Override
   public InputStream read(String path) {
     try {
@@ -258,6 +269,7 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
+  @SuppressWarnings("java:S2142")  // we wrap and rethrow InterruptedException
   @Override
   public long getSize(String path) {
     try {
