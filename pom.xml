@@ -25,6 +25,7 @@
     <junit.version>5.9.0</junit.version>
     <s3mock_2.13.version>0.2.6</s3mock_2.13.version>
     <testcontainers.version>1.17.6</testcontainers.version>
+    <commons-io.version>2.6</commons-io.version>
     <sonar.exclusions>
       **/src/main/java/org/folio/s3/client/S3ClientProperties.java
     </sonar.exclusions>
@@ -36,6 +37,11 @@
       <artifactId>lombok</artifactId>
       <version>${lombok.version}</version>
       <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
+      <version>${commons-io.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>

@@ -26,6 +26,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartCopyRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 
+@Deprecated
 @Log4j2
 public class AwsS3Client extends MinioS3Client {
 

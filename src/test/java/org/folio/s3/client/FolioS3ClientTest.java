@@ -12,6 +12,7 @@ import io.minio.AbortMultipartUploadResponse;
 import io.minio.ObjectWriteResponse;
 import io.minio.PutObjectArgs;
 import java.io.ByteArrayInputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -160,6 +161,7 @@ class FolioS3ClientTest {
     Files.deleteIfExists(tempFilePath);
   }
 
+  @Deprecated
   @ParameterizedTest
   @CsvSource({ "true," + SMALL_SIZE, "true," + LARGE_SIZE, "false," + SMALL_SIZE, "false," + LARGE_SIZE })
   void testAppendFile(boolean isAwsSdk, int size) throws IOException {
@@ -181,6 +183,7 @@ class FolioS3ClientTest {
     s3Client.remove(source);
   }
 
+  @Deprecated
   @Test
   void testAppendAbortMinio() {
     var path = "appendAbort.txt";
@@ -211,6 +214,7 @@ class FolioS3ClientTest {
     assertTrue(aborted.get());
   }
 
+  @Deprecated
   @Test
   void testAppendAbortAws() {
     var path = "appendAbort.txt";
@@ -276,7 +280,28 @@ class FolioS3ClientTest {
       .isEmpty());
   }
 
-  public static S3ClientProperties getS3ClientProperties(boolean isAwsSdk, String endpoint) {
+  @Test
+  void testOptimizedFileWriter() {
+    final String path = "opt-writer/test.txt";
+    final int size = 10;
+    final FolioS3Client client = S3ClientFactory.getS3Client(getS3ClientProperties(false, endpoint));
+
+    OptimizedFileWriter writer = new OptimizedFileWriter(path, size, client);
+
+    try {
+      final FileInputStream dis = new FileInputStream("src/test/resources/test-writer.json");
+      final String data = new String(dis.readAllBytes()) + "\n";
+
+      writer.write(data);
+      writer.close();
+
+      assertEquals(data.length(), client.getSize(path));
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static S3ClientProperties getS3ClientProperties(boolean isAwsSdk, String endpoint) { // TODO: delete isAwsSdk in the future because of AWS S3 will be unsupported
     return S3ClientProperties.builder()
             .endpoint(endpoint)
             .forcePathStyle(true)
