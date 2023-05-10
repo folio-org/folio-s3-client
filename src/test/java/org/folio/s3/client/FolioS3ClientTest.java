@@ -7,10 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.google.common.collect.Multimap;
-import io.minio.AbortMultipartUploadResponse;
-import io.minio.ObjectWriteResponse;
-import io.minio.PutObjectArgs;
 import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -22,6 +18,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.client.impl.ExtendedMinioAsyncClient;
@@ -35,6 +32,14 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
+
+import com.google.common.collect.Multimap;
+
+import io.minio.AbortMultipartUploadResponse;
+import io.minio.ObjectWriteResponse;
+import io.minio.PutObjectArgs;
+import lombok.SneakyThrows;
+import lombok.extern.log4j.Log4j2;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
@@ -44,8 +49,6 @@ import software.amazon.awssdk.services.s3.model.UploadPartCopyRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartCopyResponse;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartResponse;
-import lombok.SneakyThrows;
-import lombok.extern.log4j.Log4j2;
 
 @Log4j2
 class FolioS3ClientTest {
@@ -60,7 +63,6 @@ class FolioS3ClientTest {
 
   private static String endpoint;
   private static FolioS3Client s3Client;
-
 
   @BeforeAll
   public static void setUp() {
@@ -156,7 +158,8 @@ class FolioS3ClientTest {
 
     // Remove files files
     s3Client.remove(fileOnStorage);
-    assertEquals("[]", s3Client.list("directory_1/").toString());
+    assertEquals("[]", s3Client.list("directory_1/")
+      .toString());
 
     Files.deleteIfExists(tempFilePath);
   }
@@ -193,15 +196,16 @@ class FolioS3ClientTest {
     var mock = new ExtendedMinioAsyncClient(MinioS3Client.createClient(properties)) {
       @SneakyThrows
       public CompletableFuture<ObjectWriteResponse> putObject(PutObjectArgs args) {
-        if (args.extraQueryParams().isEmpty()) {
+        if (args.extraQueryParams()
+          .isEmpty()) {
           return super.putObject(args);
         }
         throw new NegativeArraySizeException("greetings from mock");
       }
+
       @SneakyThrows
-      public CompletableFuture<AbortMultipartUploadResponse> abortMultipartUploadAsync(
-          String bucketName, String region, String objectName, String uploadId,
-          Multimap<String, String> extraHeaders, Multimap<String, String> extraQueryParams) {
+      public CompletableFuture<AbortMultipartUploadResponse> abortMultipartUploadAsync(String bucketName, String region,
+          String objectName, String uploadId, Multimap<String, String> extraHeaders, Multimap<String, String> extraQueryParams) {
         aborted.set(true);
         return super.abortMultipartUploadAsync(bucketName, region, objectName, uploadId, extraHeaders, extraQueryParams);
       }
@@ -210,7 +214,8 @@ class FolioS3ClientTest {
     s3Client.write(path, new ByteArrayInputStream(content));
     var stream = new ByteArrayInputStream(content);
     var e = assertThrows(S3ClientException.class, () -> s3Client.append(path, stream));
-    assertEquals("greetings from mock", e.getCause().getMessage());
+    assertEquals("greetings from mock", e.getCause()
+      .getMessage());
     assertTrue(aborted.get());
   }
 
@@ -223,21 +228,27 @@ class FolioS3ClientTest {
     AtomicBoolean aborted = new AtomicBoolean(false);
     var aws = AwsS3Client.createS3Client(properties);
     var mock = new S3Client() {
-      public void close() {}
+      public void close() {
+      }
+
       public String serviceName() {
         return "serviceName";
       }
+
       public CreateMultipartUploadResponse createMultipartUpload(CreateMultipartUploadRequest request) {
         return aws.createMultipartUpload(request);
       }
+
       public UploadPartCopyResponse uploadPartCopy(UploadPartCopyRequest request) {
         return aws.uploadPartCopy(request);
       }
+
       public UploadPartResponse uploadPart(UploadPartRequest uploadPartRequest, RequestBody requestBody) {
         throw new UnsupportedOperationException("greetings from mock");
       }
-      public software.amazon.awssdk.services.s3.model.AbortMultipartUploadResponse
-          abortMultipartUpload(AbortMultipartUploadRequest request) {
+
+      public software.amazon.awssdk.services.s3.model.AbortMultipartUploadResponse abortMultipartUpload(
+          AbortMultipartUploadRequest request) {
         aborted.set(true);
         return aws.abortMultipartUpload(request);
       }
@@ -247,7 +258,8 @@ class FolioS3ClientTest {
     var mockClient = new AwsS3Client(properties, mock);
     var stream = new ByteArrayInputStream(content);
     var e = assertThrows(S3ClientException.class, () -> mockClient.append(path, stream));
-    assertEquals("greetings from mock", e.getCause().getMessage());
+    assertEquals("greetings from mock", e.getCause()
+      .getMessage());
     assertTrue(aborted.get());
   }
 
@@ -281,12 +293,12 @@ class FolioS3ClientTest {
   }
 
   @Test
-  void testOptimizedFileWriter() {
+  void testFolioS3FileWriter() {
     final String path = "opt-writer/test.txt";
     final int size = 10;
     final FolioS3Client client = S3ClientFactory.getS3Client(getS3ClientProperties(false, endpoint));
 
-    OptimizedFileWriter writer = new OptimizedFileWriter(path, size, client);
+    final FolioS3FileWriter writer = client.getFolioS3Writer(path, size);
 
     try {
       final FileInputStream dis = new FileInputStream("src/test/resources/test-writer.json");
@@ -301,17 +313,28 @@ class FolioS3ClientTest {
     }
   }
 
-  public static S3ClientProperties getS3ClientProperties(boolean isAwsSdk, String endpoint) { // TODO: delete isAwsSdk in the future because of AWS S3 will be unsupported
-    return S3ClientProperties.builder()
-            .endpoint(endpoint)
-            .forcePathStyle(true)
-            .secretKey(S3_SECRET_KEY)
-            .accessKey(S3_ACCESS_KEY)
-            .bucket(S3_BUCKET)
-            .awsSdk(isAwsSdk)
-            .region(S3_REGION)
-            .build();
+  @Test
+  void testFailsFolioS3Writer() {
+    final String path = "";
+    final int size = 0;
+    final FolioS3Client client = S3ClientFactory.getS3Client(getS3ClientProperties(false, endpoint));
+
+    assertThrows(S3ClientException.class, () -> client.getFolioS3Writer(path, size));
   }
+
+  // TODO: delete isAwsSdk in the future because of AWS S3 will be unsupported
+  public static S3ClientProperties getS3ClientProperties(boolean isAwsSdk, String endpoint) {
+    return S3ClientProperties.builder()
+      .endpoint(endpoint)
+      .forcePathStyle(true)
+      .secretKey(S3_SECRET_KEY)
+      .accessKey(S3_ACCESS_KEY)
+      .bucket(S3_BUCKET)
+      .awsSdk(isAwsSdk)
+      .region(S3_REGION)
+      .build();
+  }
+
   public static byte[] getRandomBytes(int size) {
     var original = new byte[size];
     ThreadLocalRandom.current()
