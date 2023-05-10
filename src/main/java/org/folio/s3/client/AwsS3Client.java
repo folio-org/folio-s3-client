@@ -26,7 +26,10 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartCopyRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 
-@Deprecated
+/**
+ * {@code @deprecated, not supported in future}
+ */
+@Deprecated(forRemoval = true)
 @Log4j2
 public class AwsS3Client extends MinioS3Client {
 
@@ -89,6 +92,10 @@ public class AwsS3Client extends MinioS3Client {
     }
   }
 
+  /**
+   * {@code @deprecated, won't be used in future}
+   */
+  @Deprecated(forRemoval = true)
   @Override
   public String append(String path, InputStream is) {
     log.debug("Appending with using AWS SDK client");

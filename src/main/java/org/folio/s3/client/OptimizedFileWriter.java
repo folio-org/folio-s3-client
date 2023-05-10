@@ -3,6 +3,7 @@ package org.folio.s3.client;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.s3.exception.S3ClientException;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -22,8 +23,8 @@ public class OptimizedFileWriter extends StringWriter {
             tmp = Files.createTempFile(FilenameUtils.getName(path), FilenameUtils.getExtension(path)).toFile();
 
             writer = new BufferedWriter(new FileWriter(tmp), size);
-        } catch (IOException e) {
-            throw new RuntimeException("Files buffer cannot be created due to error: ", e);
+        } catch (IOException ex) {
+            throw new S3ClientException("Files buffer cannot be created due to error: " + ex.getMessage());
         }
     }
 
@@ -36,14 +37,14 @@ public class OptimizedFileWriter extends StringWriter {
                 try {
                     Files.deleteIfExists(tmp.toPath());
                 } catch (IOException ex) {
-                    throw new RuntimeException(ex);
+                    throw new S3ClientException("Error in deleting file: " + ex.getMessage());
                 }
             }
         } else {
             try {
                 Files.deleteIfExists(tmp.toPath());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            } catch (IOException ex) {
+                throw new S3ClientException("Error in deleting file: " + ex.getMessage());
             }
         }
     }
@@ -55,14 +56,18 @@ public class OptimizedFileWriter extends StringWriter {
                 writer.close();
                 s3Client.write(path, FileUtils.openInputStream(tmp));
             }
-        } catch (Exception e) {
-            // Just skip and wait file deletion
+        } catch (Exception ex) {
+            throw new S3ClientException("Error while close(): " + ex.getMessage());
         } finally {
-            try {
-                Files.deleteIfExists(tmp.toPath());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            deleteTmp(tmp);
+        }
+    }
+
+    private void deleteTmp(File tmp) {
+        try {
+            Files.deleteIfExists(tmp.toPath());
+        } catch (IOException ex) {
+            throw new S3ClientException("Error in deleting file: " + ex.getMessage());
         }
     }
 }

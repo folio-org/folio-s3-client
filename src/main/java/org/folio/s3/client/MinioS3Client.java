@@ -130,7 +130,10 @@ public class MinioS3Client implements FolioS3Client {
     return upload(path, filename, new HashMap<>());
   }
 
-  @Deprecated
+  /**
+   * {@code @deprecated, won't be used in future}
+   */
+  @Deprecated(forRemoval = true)
   @SuppressWarnings("java:S2142")  // we wrap and rethrow InterruptedException
   @Override
   public String append(String path, InputStream is) {
