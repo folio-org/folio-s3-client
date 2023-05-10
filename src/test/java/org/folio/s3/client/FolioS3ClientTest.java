@@ -293,12 +293,12 @@ class FolioS3ClientTest {
   }
 
   @Test
-  void testFolioS3FileWriter() {
+  void testRemoteStorageWriter() {
     final String path = "opt-writer/test.txt";
     final int size = 10;
     final FolioS3Client client = S3ClientFactory.getS3Client(getS3ClientProperties(false, endpoint));
 
-    final FolioS3FileWriter writer = client.getFolioS3Writer(path, size);
+    final RemoteStorageWriter writer = client.getFolioS3Writer(path, size);
 
     try {
       final FileInputStream dis = new FileInputStream("src/test/resources/test-writer.json");
@@ -314,7 +314,7 @@ class FolioS3ClientTest {
   }
 
   @Test
-  void testFailsFolioS3Writer() {
+  void testFailsRemoteStorageWriter() {
     final String path = "";
     final int size = 0;
     final FolioS3Client client = S3ClientFactory.getS3Client(getS3ClientProperties(false, endpoint));

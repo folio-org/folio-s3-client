@@ -12,14 +12,14 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.exception.S3ClientException;
 
-public class FolioS3FileWriter extends StringWriter {
+public class RemoteStorageWriter extends StringWriter {
 
   private final File tmp;
   private final String path;
   private final BufferedWriter writer;
   private final FolioS3Client s3Client;
 
-  public FolioS3FileWriter(String path, int size, FolioS3Client s3Client) {
+  public RemoteStorageWriter(String path, int size, FolioS3Client s3Client) {
     try {
       this.s3Client = s3Client;
       this.path = path;

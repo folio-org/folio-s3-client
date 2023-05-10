@@ -73,11 +73,11 @@ public interface FolioS3Client {
   long getSize(String path);
 
   /**
-   * Returns FolioS3FileWriter of the S3Client
+   * Returns RemoteStorageWriter of the S3Client
    *
    * @param path - the path to the temp file that will be used for FileWriter
    * @param size - output-buffer size of FileWriter
-   * @return FolioS3FileWriter instance
+   * @return RemoteStorageWriter instance
    */
-  FolioS3FileWriter getFolioS3Writer(String path, int size);
+  RemoteStorageWriter getFolioS3Writer(String path, int size);
 }

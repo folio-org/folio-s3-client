@@ -305,7 +305,7 @@ public class MinioS3Client implements FolioS3Client {
   }
 
   @Override
-  public FolioS3FileWriter getFolioS3Writer(String path, int size) {
-    return new FolioS3FileWriter(path, size, this);
+  public RemoteStorageWriter getFolioS3Writer(String path, int size) {
+    return new RemoteStorageWriter(path, size, this);
   }
 }
