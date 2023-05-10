@@ -20,10 +20,10 @@ public class OptimizedFileWriter extends StringWriter {
             this.s3Client = s3Client;
             this.path = path;
 
-            tmp = Files.createTempFile(FilenameUtils.getName(path), FilenameUtils.getExtension(path)).toFile();
+            this.tmp = Files.createTempFile(FilenameUtils.getName(path), FilenameUtils.getExtension(path)).toFile();
 
-            writer = new BufferedWriter(new FileWriter(tmp), size);
-        } catch (IOException ex) {
+            this.writer = new BufferedWriter(new FileWriter(this.tmp), size);
+        } catch (Exception ex) {
             throw new S3ClientException("Files buffer cannot be created due to error: " + ex.getMessage());
         }
     }
@@ -34,18 +34,10 @@ public class OptimizedFileWriter extends StringWriter {
             try {
                 writer.append(data);
             } catch (IOException e) {
-                try {
-                    Files.deleteIfExists(tmp.toPath());
-                } catch (IOException ex) {
-                    throw new S3ClientException("Error in deleting file: " + ex.getMessage());
-                }
+                deleteTmp(tmp);
             }
         } else {
-            try {
-                Files.deleteIfExists(tmp.toPath());
-            } catch (IOException ex) {
-                throw new S3ClientException("Error in deleting file: " + ex.getMessage());
-            }
+            deleteTmp(tmp);
         }
     }
 
