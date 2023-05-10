@@ -79,5 +79,5 @@ public interface FolioS3Client {
    * @param size - output-buffer size of FileWriter
    * @return RemoteStorageWriter instance
    */
-  RemoteStorageWriter getFolioS3Writer(String path, int size);
+  RemoteStorageWriter getRemoteStorageWriter(String path, int size);
 }

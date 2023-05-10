@@ -298,7 +298,7 @@ class FolioS3ClientTest {
     final int size = 10;
     final FolioS3Client client = S3ClientFactory.getS3Client(getS3ClientProperties(false, endpoint));
 
-    final RemoteStorageWriter writer = client.getFolioS3Writer(path, size);
+    final RemoteStorageWriter writer = client.getRemoteStorageWriter(path, size);
 
     try {
       final FileInputStream dis = new FileInputStream("src/test/resources/test-writer.json");
@@ -319,7 +319,7 @@ class FolioS3ClientTest {
     final int size = 0;
     final FolioS3Client client = S3ClientFactory.getS3Client(getS3ClientProperties(false, endpoint));
 
-    assertThrows(S3ClientException.class, () -> client.getFolioS3Writer(path, size));
+    assertThrows(S3ClientException.class, () -> client.getRemoteStorageWriter(path, size));
   }
 
   // TODO: delete isAwsSdk in the future because of AWS S3 will be unsupported
