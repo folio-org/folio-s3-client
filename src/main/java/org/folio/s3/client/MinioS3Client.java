@@ -3,7 +3,6 @@ package org.folio.s3.client;
 import static io.minio.ObjectWriteArgs.MAX_PART_SIZE;
 import static io.minio.ObjectWriteArgs.MIN_MULTIPART_SIZE;
 
-import com.google.common.collect.ImmutableMultimap;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
 import java.net.URLEncoder;
@@ -15,10 +14,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import io.minio.StatObjectArgs;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.client.impl.ExtendedMinioAsyncClient;
 import org.folio.s3.exception.S3ClientException;
+
+import com.google.common.collect.ImmutableMultimap;
 
 import io.minio.BucketExistsArgs;
 import io.minio.GetObjectArgs;
@@ -28,6 +28,7 @@ import io.minio.MinioAsyncClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import io.minio.RemoveObjectsArgs;
+import io.minio.StatObjectArgs;
 import io.minio.UploadObjectArgs;
 import io.minio.credentials.IamAwsProvider;
 import io.minio.credentials.Provider;
@@ -82,7 +83,7 @@ public class MinioS3Client implements FolioS3Client {
     return ExtendedMinioAsyncClient.build(builder);
   }
 
-  @SuppressWarnings("java:S2142")  // we wrap and rethrow InterruptedException
+  @SuppressWarnings("java:S2142") // we wrap and rethrow InterruptedException
   void createBucketIfNotExists() {
     try {
       if (StringUtils.isBlank(bucket)) {
@@ -98,9 +99,9 @@ public class MinioS3Client implements FolioS3Client {
         log.debug("Bucket already exists.");
       }
       client.makeBucket(MakeBucketArgs.builder()
-          .bucket(bucket)
-          .region(region)
-          .build());
+        .bucket(bucket)
+        .region(region)
+        .build());
       log.debug("Created {} bucket.", bucket);
     } catch (Exception e) {
       log.error("Error creating bucket {}: {}", bucket, e.getMessage(), e);
@@ -108,7 +109,7 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
-  @SuppressWarnings("java:S2142")  // we wrap and rethrow InterruptedException
+  @SuppressWarnings("java:S2142") // we wrap and rethrow InterruptedException
   private String upload(String path, String filename, Map<String, String> headers) {
     try {
       return client.uploadObject(UploadObjectArgs.builder()
@@ -130,7 +131,11 @@ public class MinioS3Client implements FolioS3Client {
     return upload(path, filename, new HashMap<>());
   }
 
-  @SuppressWarnings("java:S2142")  // we wrap and rethrow InterruptedException
+  /**
+   * {@code @deprecated, won't be used in future}
+   */
+  @Deprecated(forRemoval = true)
+  @SuppressWarnings("java:S2142") // we wrap and rethrow InterruptedException
   @Override
   public String append(String path, InputStream is) {
     String uploadId = null;
@@ -149,19 +154,27 @@ public class MinioS3Client implements FolioS3Client {
         return write(path, composed);
       }
 
-      var multipart = client.createMultipartUploadAsync(bucket, region, path, null, null).get().result();
+      var multipart = client.createMultipartUploadAsync(bucket, region, path, null, null)
+        .get()
+        .result();
       uploadId = multipart.uploadId();
       var source = URLEncoder.encode(bucket + "/" + path, StandardCharsets.UTF_8);
       var header = ImmutableMultimap.of("x-amz-copy-source", source);
       var part1 = client.uploadPartCopyAsync(bucket, region, path, uploadId, 1, header, null);
-      var part2 = client.putObject(PutObjectArgs.builder().bucket(bucket).region(region).object(path)
-          .stream(is, -1, MAX_PART_SIZE)
-          .extraQueryParams(Map.of("uploadId", uploadId, "partNumber", "2")).build());
-      Part [] parts = {
-          new Part(1, part1.get().result().etag()),
-          new Part(2, part2.get().etag())
-          };
-      var result = client.completeMultipartUploadAsync(bucket, region, path, uploadId, parts, null, null).get();
+      var part2 = client.putObject(PutObjectArgs.builder()
+        .bucket(bucket)
+        .region(region)
+        .object(path)
+        .stream(is, -1, MAX_PART_SIZE)
+        .extraQueryParams(Map.of("uploadId", uploadId, "partNumber", "2"))
+        .build());
+      Part[] parts = { new Part(1, part1.get()
+        .result()
+        .etag()), new Part(2,
+            part2.get()
+              .etag()) };
+      var result = client.completeMultipartUploadAsync(bucket, region, path, uploadId, parts, null, null)
+        .get();
       return result.object();
     } catch (Exception e) {
       if (uploadId != null) {
@@ -176,7 +189,7 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
-  @SuppressWarnings("java:S2142")  // we wrap and rethrow InterruptedException
+  @SuppressWarnings("java:S2142") // we wrap and rethrow InterruptedException
   @Override
   public String write(String path, InputStream is) {
     log.debug("Writing with using Minio client");
@@ -195,7 +208,7 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
-  @SuppressWarnings("java:S2142")  // we wrap and rethrow InterruptedException
+  @SuppressWarnings("java:S2142") // we wrap and rethrow InterruptedException
   @Override
   public String remove(String path) {
     try {
@@ -260,7 +273,7 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
-  @SuppressWarnings("java:S2142")  // we wrap and rethrow InterruptedException
+  @SuppressWarnings("java:S2142") // we wrap and rethrow InterruptedException
   @Override
   public InputStream read(String path) {
     try {
@@ -275,7 +288,7 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
-  @SuppressWarnings("java:S2142")  // we wrap and rethrow InterruptedException
+  @SuppressWarnings("java:S2142") // we wrap and rethrow InterruptedException
   @Override
   public long getSize(String path) {
     try {
@@ -289,5 +302,10 @@ public class MinioS3Client implements FolioS3Client {
     } catch (Exception e) {
       throw new S3ClientException("Error getting size: " + path, e);
     }
+  }
+
+  @Override
+  public RemoteStorageWriter getRemoteStorageWriter(String path, int size) {
+    return new RemoteStorageWriter(path, size, this);
   }
 }
