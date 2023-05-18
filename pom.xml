@@ -60,7 +60,7 @@
     </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
-      <artifactId>aws-sdk-java</artifactId>
+      <artifactId>s3</artifactId>
       <version>${aws.sdk.version}</version>
       <scope>provided</scope>
     </dependency>

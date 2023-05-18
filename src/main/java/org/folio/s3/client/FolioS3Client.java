@@ -80,4 +80,11 @@ public interface FolioS3Client {
    * @return RemoteStorageWriter instance
    */
   RemoteStorageWriter getRemoteStorageWriter(String path, int size);
+
+  /**
+   * Returns presigned url for object on S3-compatible storage
+   * @param path - the path to the file on S3-compatible storage
+   * @return presigned url of object
+   */
+  String getPresignedUrl(String path);
 }

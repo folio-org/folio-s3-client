@@ -12,8 +12,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import io.minio.GetPresignedObjectUrlArgs;
+import io.minio.http.Method;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.client.impl.ExtendedMinioAsyncClient;
 import org.folio.s3.exception.S3ClientException;
@@ -40,6 +43,7 @@ import lombok.extern.log4j.Log4j2;
 @Log4j2
 public class MinioS3Client implements FolioS3Client {
 
+  private static final int EXPIRATION_TIME_IN_MINUTES = 10;
   private final ExtendedMinioAsyncClient client;
   private final String bucket;
   private final String region;
@@ -307,5 +311,19 @@ public class MinioS3Client implements FolioS3Client {
   @Override
   public RemoteStorageWriter getRemoteStorageWriter(String path, int size) {
     return new RemoteStorageWriter(path, size, this);
+  }
+
+  @Override
+  public String getPresignedUrl(String path) {
+    try {
+      return client.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
+        .bucket(bucket)
+        .object(path)
+        .method(Method.GET)
+        .expiry(EXPIRATION_TIME_IN_MINUTES, TimeUnit.MINUTES)
+        .build());
+    } catch (Exception e) {
+      throw new S3ClientException("Error getting presigned url for object: " + path, e);
+    }
   }
 }
