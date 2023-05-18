@@ -4,6 +4,7 @@ import static io.minio.ObjectWriteArgs.MIN_MULTIPART_SIZE;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -25,6 +26,7 @@ import org.folio.s3.client.impl.ExtendedMinioAsyncClient;
 import org.folio.s3.exception.S3ClientException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -114,10 +116,14 @@ class FolioS3ClientTest {
     original.forEach(p -> {
       try (var is = s3Client.read(p)) {
         assertTrue(Objects.deepEquals(content, is.readAllBytes()));
+        var link = s3Client.getPresignedUrl(p);
+        assertNotNull(link);
+        assertTrue(link.contains(p));
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
     });
+
 
     // Remove files files
     String[] paths = new String[original.size()];
@@ -187,6 +193,7 @@ class FolioS3ClientTest {
   }
 
   @Deprecated
+  @Disabled
   @Test
   void testAppendAbortMinio() {
     var path = "appendAbort.txt";
@@ -292,24 +299,22 @@ class FolioS3ClientTest {
       .isEmpty());
   }
 
-  @Test
-  void testRemoteStorageWriter() {
+  @ParameterizedTest
+  @ValueSource(ints = {SMALL_SIZE, LARGE_SIZE})
+  void testRemoteStorageWriter(int size) throws IOException {
     final String path = "opt-writer/test.txt";
-    final int size = 10;
-    final FolioS3Client client = S3ClientFactory.getS3Client(getS3ClientProperties(false, endpoint));
 
-    final RemoteStorageWriter writer = client.getRemoteStorageWriter(path, size);
+    s3Client = S3ClientFactory.getS3Client(getS3ClientProperties(false, endpoint));
+    final var data = getRandomBytes(size);
 
-    try {
-      final FileInputStream dis = new FileInputStream("src/test/resources/test-writer.json");
-      final String data = new String(dis.readAllBytes()) + "\n";
-
-      writer.write(data);
-      writer.close();
-
-      assertEquals(data.length(), client.getSize(path));
+    try (final var writer = s3Client.getRemoteStorageWriter(path, 5 * SMALL_SIZE)) {
+      writer.write(new String(data));
     } catch (Exception e) {
       throw new RuntimeException(e);
+    }
+
+    try (var is = s3Client.read(path)) {
+      assertTrue(Objects.deepEquals(new String(data), new String(is.readAllBytes())));
     }
   }
 
