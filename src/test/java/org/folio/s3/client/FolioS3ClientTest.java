@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -64,7 +63,6 @@ class FolioS3ClientTest {
   public static final int LARGE_SIZE = MIN_MULTIPART_SIZE + 1;
 
   private static String endpoint;
-  private static FolioS3Client s3Client;
 
   @BeforeAll
   public static void setUp() {
@@ -89,7 +87,9 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @ValueSource(booleans = { true, false })
   void testWriteReadDeleteFile(boolean isAwsSdk) throws IOException {
-    s3Client = S3ClientFactory.getS3Client(getS3ClientProperties(isAwsSdk, endpoint));
+    var properties = getS3ClientProperties(isAwsSdk, endpoint);
+    var s3Client = S3ClientFactory.getS3Client(properties);
+    s3Client.createBucketIfNotExists();
     byte[] content = getRandomBytes(SMALL_SIZE);
     var original = List.of("directory_1/CSV_Data_1.csv", "directory_1/directory_2/CSV_Data_2.csv",
         "directory_1/directory_2/directory_3/CSV_Data_3.csv");
@@ -136,7 +136,9 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @ValueSource(booleans = { true, false })
   void testUploadReadDeleteFile(boolean isAwsSdk) throws IOException {
-    s3Client = S3ClientFactory.getS3Client(getS3ClientProperties(isAwsSdk, endpoint));
+    var properties = getS3ClientProperties(isAwsSdk, endpoint);
+    var s3Client = S3ClientFactory.getS3Client(properties);
+    s3Client.createBucketIfNotExists();
     byte[] content = getRandomBytes(SMALL_SIZE);
     var fileOnStorage = "directory_1/CSV_Data_1.csv";
 
@@ -174,7 +176,9 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @CsvSource({ "true," + SMALL_SIZE, "true," + LARGE_SIZE, "false," + SMALL_SIZE, "false," + LARGE_SIZE })
   void testAppendFile(boolean isAwsSdk, int size) throws IOException {
-    s3Client = S3ClientFactory.getS3Client(getS3ClientProperties(isAwsSdk, endpoint));
+    var properties = getS3ClientProperties(isAwsSdk, endpoint);
+    var s3Client = S3ClientFactory.getS3Client(properties);
+    s3Client.createBucketIfNotExists();
     byte[] content1 = getRandomBytes(size);
     byte[] content2 = getRandomBytes(size + 1);
     var source = "directory_1/CSV_Data_1.csv";
@@ -217,7 +221,8 @@ class FolioS3ClientTest {
         return super.abortMultipartUploadAsync(bucketName, region, objectName, uploadId, extraHeaders, extraQueryParams);
       }
     };
-    s3Client = new MinioS3Client(properties, mock);
+    var s3Client = new MinioS3Client(properties, mock);
+    s3Client.createBucketIfNotExists();
     s3Client.write(path, new ByteArrayInputStream(content));
     var stream = new ByteArrayInputStream(content);
     var e = assertThrows(S3ClientException.class, () -> s3Client.append(path, stream));
@@ -260,7 +265,8 @@ class FolioS3ClientTest {
         return aws.abortMultipartUpload(request);
       }
     };
-    s3Client = new AwsS3Client(properties, aws);
+    var s3Client = new AwsS3Client(properties, aws);
+    s3Client.createBucketIfNotExists();
     s3Client.write(path, new ByteArrayInputStream(content));
     var mockClient = new AwsS3Client(properties, mock);
     var stream = new ByteArrayInputStream(content);
@@ -274,7 +280,9 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @ValueSource(booleans = { true, false })
   void testNonExistingFileOperations(boolean isAwsSdk) {
-    s3Client = S3ClientFactory.getS3Client(getS3ClientProperties(isAwsSdk, endpoint));
+    var properties = getS3ClientProperties(isAwsSdk, endpoint);
+    var s3Client = S3ClientFactory.getS3Client(properties);
+    s3Client.createBucketIfNotExists();
     var fakeLocalPath = "/fake-local-path";
     var fakeRemotePath = "/fake-remote-path";
     // upload
@@ -304,7 +312,9 @@ class FolioS3ClientTest {
   void testRemoteStorageWriter(int size) throws IOException {
     final String path = "opt-writer/test.txt";
 
-    s3Client = S3ClientFactory.getS3Client(getS3ClientProperties(false, endpoint));
+    var properties = getS3ClientProperties(false, endpoint);
+    var s3Client = S3ClientFactory.getS3Client(properties);
+    s3Client.createBucketIfNotExists();
     final var data = getRandomBytes(size);
 
     try (final var writer = s3Client.getRemoteStorageWriter(path, 5 * SMALL_SIZE)) {

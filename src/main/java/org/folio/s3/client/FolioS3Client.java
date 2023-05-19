@@ -87,4 +87,9 @@ public interface FolioS3Client {
    * @return presigned url of object
    */
   String getPresignedUrl(String path);
+
+  /**
+   * Creates bucket. Bucket name should be declared in {@link S3ClientProperties}
+   */
+  void createBucketIfNotExists();
 }
