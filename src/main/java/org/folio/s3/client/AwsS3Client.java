@@ -26,10 +26,6 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartCopyRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 
-/**
- * {@code @deprecated, not supported in future}
- */
-@Deprecated(forRemoval = true)
 @Log4j2
 public class AwsS3Client extends MinioS3Client {
 
@@ -44,7 +40,6 @@ public class AwsS3Client extends MinioS3Client {
     super(s3ClientProperties);
     this.client = client;
     bucket = s3ClientProperties.getBucket();
-    createBucketIfNotExists();
   }
 
   public AwsS3Client(S3ClientProperties s3ClientProperties) {

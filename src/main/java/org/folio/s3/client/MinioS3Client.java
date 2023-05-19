@@ -52,7 +52,6 @@ public class MinioS3Client implements FolioS3Client {
     region = properties.getRegion();
     bucket = properties.getBucket();
     this.client = client;
-    createBucketIfNotExists();
   }
 
   public MinioS3Client(S3ClientProperties properties) {
@@ -88,7 +87,7 @@ public class MinioS3Client implements FolioS3Client {
   }
 
   @SuppressWarnings("java:S2142") // we wrap and rethrow InterruptedException
-  void createBucketIfNotExists() {
+  public void createBucketIfNotExists() {
     try {
       if (StringUtils.isBlank(bucket)) {
         log.debug("Bucket name is null, empty or blank.");
@@ -136,7 +135,7 @@ public class MinioS3Client implements FolioS3Client {
   }
 
   /**
-   * {@code @deprecated, won't be used in future}
+   * {@code @deprecated, won't be used in future due to unstable work}
    */
   @Deprecated(forRemoval = true)
   @SuppressWarnings("java:S2142") // we wrap and rethrow InterruptedException
