@@ -314,11 +314,16 @@ public class MinioS3Client implements FolioS3Client {
 
   @Override
   public String getPresignedUrl(String path) {
+    return getPresignedUrl(path, Method.GET);
+  }
+
+  @Override
+  public String getPresignedUrl(String path, Method method) {
     try {
       return client.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
         .bucket(bucket)
         .object(path)
-        .method(Method.GET)
+        .method(method)
         .expiry(EXPIRATION_TIME_IN_MINUTES, TimeUnit.MINUTES)
         .build());
     } catch (Exception e) {
