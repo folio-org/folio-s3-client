@@ -1,5 +1,6 @@
 package org.folio.s3.client;
 
+import io.minio.http.Method;
 import java.io.InputStream;
 import java.util.List;
 
@@ -82,11 +83,19 @@ public interface FolioS3Client {
   RemoteStorageWriter getRemoteStorageWriter(String path, int size);
 
   /**
-   * Returns presigned url for object on S3-compatible storage
+   * Returns presigned GET url for object on S3-compatible storage
    * @param path - the path to the file on S3-compatible storage
    * @return presigned url of object
    */
   String getPresignedUrl(String path);
+
+  /**
+   * Returns presigned url for object on S3-compatible storage
+   * @param path - the path to the file on S3-compatible storage
+   * @param method - http method
+   * @return presigned url of object
+   */
+  String getPresignedUrl(String path, Method method);
 
   /**
    * Creates bucket. Bucket name should be declared in {@link S3ClientProperties}

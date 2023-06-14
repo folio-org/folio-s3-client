@@ -39,6 +39,7 @@ import com.google.common.collect.Multimap;
 import io.minio.AbortMultipartUploadResponse;
 import io.minio.ObjectWriteResponse;
 import io.minio.PutObjectArgs;
+import io.minio.http.Method;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -148,6 +149,10 @@ class FolioS3ClientTest {
     Files.deleteIfExists(tempFilePath);
     Files.createFile(tempFilePath);
     Files.write(tempFilePath, content);
+
+    var link = s3Client.getPresignedUrl(fileOnStorage, Method.PUT);
+    assertNotNull(link);
+    assertTrue(link.contains(fileOnStorage));
 
     // Upload files content
     s3Client.upload(tempFilePath.toString(), fileOnStorage);
