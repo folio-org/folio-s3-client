@@ -465,12 +465,11 @@ class FolioS3ClientTest {
         S3ClientException.class,
         () -> s3Client.completeMultipartUpload(fileOnStorage, uploadId, new ArrayList<>()));
 
-    // the presigned URL will always generate successfully, only failing later upon
-    // upload
-    // we'll give a bad part number to simulate failure
+    // the presigned URL will always generate successfully, only failing later on upload
+    // we'll give a bad parameters to simulate failure
     assertThrows(
         S3ClientException.class,
-        () -> s3Client.getPresignedMultipartUploadUrl(fileOnStorage, uploadId, -1));
+        () -> s3Client.getPresignedMultipartUploadUrl(null, null, 1));
 
     // and to check that a bad filename results in failure
     assertThrows(
