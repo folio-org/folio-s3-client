@@ -461,9 +461,11 @@ class FolioS3ClientTest {
             uploadId,
             1,
             tempFilePathString));
+
+    List<String> emptyList = new ArrayList<>();
     assertThrows(
         S3ClientException.class,
-        () -> s3Client.completeMultipartUpload(fileOnStorage, uploadId, new ArrayList<>()));
+        () -> s3Client.completeMultipartUpload(fileOnStorage, uploadId, emptyList));
 
     // the presigned URL will always generate successfully, only failing later on upload
     // we'll give a bad parameters to simulate failure
