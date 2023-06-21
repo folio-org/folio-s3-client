@@ -74,12 +74,12 @@ class FolioS3ClientTest {
   @BeforeAll
   public static void setUp() {
     s3 = new GenericContainer<>("minio/minio:latest").withEnv("MINIO_ACCESS_KEY", S3_ACCESS_KEY)
-        .withEnv("MINIO_SECRET_KEY", S3_SECRET_KEY)
-        .withCommand("server /data")
-        .withExposedPorts(S3_PORT)
-        .waitingFor(new HttpWaitStrategy().forPath("/minio/health/ready")
-            .forPort(S3_PORT)
-            .withStartupTimeout(Duration.ofSeconds(10)));
+      .withEnv("MINIO_SECRET_KEY", S3_SECRET_KEY)
+      .withCommand("server /data")
+      .withExposedPorts(S3_PORT)
+      .waitingFor(new HttpWaitStrategy().forPath("/minio/health/ready")
+        .forPort(S3_PORT)
+        .withStartupTimeout(Duration.ofSeconds(10)));
     s3.start();
 
     endpoint = format("http://%s:%s", s3.getHost(), s3.getFirstMappedPort());
