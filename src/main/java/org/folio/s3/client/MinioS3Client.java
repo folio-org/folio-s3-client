@@ -3,6 +3,7 @@ package org.folio.s3.client;
 import static io.minio.ObjectWriteArgs.MAX_PART_SIZE;
 import static io.minio.ObjectWriteArgs.MIN_MULTIPART_SIZE;
 
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
 import java.net.URLEncoder;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.http.Method;
@@ -327,7 +329,113 @@ public class MinioS3Client implements FolioS3Client {
         .expiry(EXPIRATION_TIME_IN_MINUTES, TimeUnit.MINUTES)
         .build());
     } catch (Exception e) {
-      throw new S3ClientException("Error getting presigned url for object: " + path, e);
+      throw new S3ClientException(
+        "Error getting presigned url for object: " + path + ", method: " + method,
+        e
+      );
+    }
+  }
+
+  @Override
+  public String initiateMultipartUpload(String path) {
+    try {
+      return client.createMultipartUploadAsync(bucket, region, path, null, null)
+        .get()
+        .result()
+        .uploadId();
+    } catch (Exception e) {
+      throw new S3ClientException("Error initiating multipart upload for object: " + path, e);
+    }
+  }
+
+  @Override
+  public String createPresignedMultipartUploadUrl(
+    String path,
+    String uploadId,
+    int partNumber
+  ) {
+    try {
+      return client.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
+        .bucket(bucket)
+        .object(path)
+        .method(Method.PUT)
+        .expiry(EXPIRATION_TIME_IN_MINUTES, TimeUnit.MINUTES)
+        .extraQueryParams(Map.of("partNumber", String.valueOf(partNumber), "uploadId", uploadId))
+        .build());
+    } catch (Exception e) {
+      throw new S3ClientException(
+        "Error getting presigned url for upload ID: " + uploadId + ", part #: " + partNumber,
+        e
+      );
+    }
+  }
+
+  @Override
+  public String uploadMultipartPart(
+    String path,
+    String uploadId,
+    int partNumber,
+    String filename
+  ) {
+    try {
+      InputStream stream = new FileInputStream(filename);
+      return client.putObject(
+          PutObjectArgs.builder()
+            .bucket(bucket)
+            .region(region)
+            .object(path)
+            .stream(stream, -1, MAX_PART_SIZE)
+            .extraQueryParams(Map.of("uploadId", uploadId, "partNumber", String.valueOf(partNumber)))
+            .build()
+        )
+        .get()
+        .etag();
+    } catch (Exception e) {
+      throw new S3ClientException(
+        "Cannot upload part # " + partNumber + " for upload ID: " + uploadId,
+        e
+      );
+    }
+  }
+
+  @Override
+  public void abortMultipartUpload(
+    String path,
+    String uploadId
+  ) {
+    try {
+       client.abortMultipartUploadAsync(bucket, region, path, uploadId, null, null).get();
+    } catch (Exception e) {
+      throw new S3ClientException(
+        "Error getting presigned url for upload ID: " + uploadId,
+        e
+      );
+    }
+  }
+
+  @Override
+  public void completeMultipartUpload(
+    String path,
+    String uploadId,
+    List<String> partETags
+  ) {
+    try {
+      client.completeMultipartUploadAsync(
+        bucket,
+        region,
+        path,
+        uploadId,
+        IntStream.range(0, partETags.size())
+          .mapToObj(i -> new Part(i + 1, partETags.get(i)))
+          .toArray(Part[]::new),
+        null,
+        null
+      ).get();
+    } catch (Exception e) {
+      throw new S3ClientException(
+        "Error getting presigned url for upload ID: " + uploadId,
+        e
+      );
     }
   }
 }
