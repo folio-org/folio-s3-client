@@ -10,14 +10,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.IntStream;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -340,6 +346,142 @@ class FolioS3ClientTest {
     final FolioS3Client client = S3ClientFactory.getS3Client(getS3ClientProperties(false, endpoint));
 
     assertThrows(S3ClientException.class, () -> client.getRemoteStorageWriter(path, size));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = { true, false })
+  void testMultipart(boolean isAwsSdk) throws IOException {
+    S3ClientProperties properties = getS3ClientProperties(isAwsSdk, endpoint);
+    FolioS3Client s3Client = S3ClientFactory.getS3Client(properties);
+    s3Client.createBucketIfNotExists();
+
+    var fileOnStorage = "directory/file.ext";
+
+    List<byte[]> contents = Arrays.asList(
+        getRandomBytes(LARGE_SIZE),
+        getRandomBytes(LARGE_SIZE),
+        getRandomBytes(SMALL_SIZE));
+    List<Path> tempFilePaths = Arrays.asList(
+        Paths.get("part1"),
+        Paths.get("part2"),
+        Paths.get("part3"));
+
+    IntStream.range(0, 3).forEach(i -> {
+      try {
+        Files.deleteIfExists(tempFilePaths.get(i));
+        Files.createFile(tempFilePaths.get(i));
+        Files.write(tempFilePaths.get(i), contents.get(i));
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    });
+
+    // start upload
+    String uploadId = s3Client.initiateMultipartUpload(fileOnStorage);
+    assertNotNull(uploadId);
+
+    List<String> eTags = IntStream.rangeClosed(1, 3).mapToObj(i -> {
+      // get presigned URLs
+      String link = s3Client.getPresignedMultipartUploadUrl(fileOnStorage, uploadId, i);
+      assertNotNull(link);
+      assertTrue(link.contains("partNumber=" + i));
+      assertTrue(link.contains(fileOnStorage));
+
+      // upload it (normal way)
+      String eTag = s3Client.uploadMultipartPart(
+          fileOnStorage,
+          uploadId,
+          i,
+          tempFilePaths.get(i - 1).toString());
+      assertNotNull(eTag);
+      return eTag;
+    }).collect(toList());
+
+    // complete upload
+    s3Client.completeMultipartUpload(fileOnStorage, uploadId, eTags);
+
+    // too late to abort
+    assertThrows(S3ClientException.class, () -> s3Client.abortMultipartUpload(fileOnStorage, uploadId));
+
+    assertEquals(1, s3Client.list("directory/").size());
+    assertEquals("directory/file.ext", s3Client.list("directory/").get(0));
+
+    // Read files content
+    try (InputStream is = s3Client.read(fileOnStorage)) {
+      byte[] fromS3 = is.readAllBytes();
+      assertTrue(Objects.deepEquals(contents.get(0), Arrays.copyOfRange(fromS3, 0, LARGE_SIZE)));
+      assertTrue(Objects.deepEquals(contents.get(1), Arrays.copyOfRange(fromS3, LARGE_SIZE, LARGE_SIZE * 2)));
+      assertTrue(Objects.deepEquals(contents.get(2), Arrays.copyOfRange(fromS3, LARGE_SIZE * 2, LARGE_SIZE * 2 + SMALL_SIZE)));
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    // Remove files files
+    s3Client.remove(fileOnStorage);
+    assertEquals("[]", s3Client.list("directory/").toString());
+
+    tempFilePaths.forEach(path -> {
+      try {
+        Files.deleteIfExists(path);
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    });
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = { true, false })
+  void testMultipartExceptions(boolean isAwsSdk) throws IOException {
+    S3ClientProperties properties = getS3ClientProperties(isAwsSdk, endpoint);
+    FolioS3Client s3Client = S3ClientFactory.getS3Client(properties);
+    s3Client.createBucketIfNotExists();
+
+    var fileOnStorage = "directory/file.ext";
+
+    byte[] content = getRandomBytes(LARGE_SIZE);
+    Path tempFilePath = Paths.get("part1");
+    String tempFilePathString = tempFilePath.toString();
+
+    Files.deleteIfExists(tempFilePath);
+    Files.createFile(tempFilePath);
+    Files.write(tempFilePath, content);
+
+    // start upload
+    String uploadId = s3Client.initiateMultipartUpload(fileOnStorage);
+    assertNotNull(uploadId);
+
+    // abort upload
+    s3Client.abortMultipartUpload(fileOnStorage, uploadId);
+
+    // now, all further operations should fail...
+    assertThrows(
+        S3ClientException.class,
+        () -> s3Client.uploadMultipartPart(
+            fileOnStorage,
+            uploadId,
+            1,
+            tempFilePathString));
+
+    List<String> emptyList = new ArrayList<>();
+    assertThrows(
+        S3ClientException.class,
+        () -> s3Client.completeMultipartUpload(fileOnStorage, uploadId, emptyList));
+
+    // the presigned URL will always generate successfully, only failing later on upload
+    // we'll give a bad parameters to simulate failure
+    assertThrows(
+        S3ClientException.class,
+        () -> s3Client.getPresignedMultipartUploadUrl(null, null, 1));
+
+    // and to check that a bad filename results in failure
+    assertThrows(
+        S3ClientException.class,
+        () -> s3Client.initiateMultipartUpload(""));
+
+    // nothing should have been saved
+    assertEquals("[]", s3Client.list("directory/").toString());
+
+    Files.deleteIfExists(tempFilePath);
   }
 
   // TODO: delete isAwsSdk in the future because of AWS S3 will be unsupported

@@ -5,7 +5,6 @@ import java.io.InputStream;
 import java.util.List;
 
 public interface FolioS3Client {
-
   /**
    * Upload file on S3-compatible storage
    *
@@ -16,8 +15,9 @@ public interface FolioS3Client {
   String upload(String path, String filename);
 
   /**
-   * Appends content of input stream to the file on S3 storage. In case file doesn't exist it will be created automatically.
-   * 
+   * Appends content of input stream to the file on S3 storage. In case file
+   * doesn't exist it will be created automatically.
+   *
    * @param path the path to the file on S3-compatible storage
    * @param is   input stream with appendable data
    * @return path of updated file
@@ -43,14 +43,15 @@ public interface FolioS3Client {
 
   /**
    * Removes a files on S3 storage
-   * 
+   *
    * @param paths array of file paths to delete
    * @return list of deleted file paths
    */
   List<String> remove(String... paths);
 
   /**
-   * Opens a file on remote storage, returns an input stream to read from the file. InputStream should be read and closed properly.
+   * Opens a file on remote storage, returns an input stream to read from the
+   * file. InputStream should be read and closed properly.
    *
    * @param path - the path to the file on S3-compatible storage
    * @return a new input stream with file content
@@ -84,6 +85,7 @@ public interface FolioS3Client {
 
   /**
    * Returns presigned GET url for object on S3-compatible storage
+   *
    * @param path - the path to the file on S3-compatible storage
    * @return presigned url of object
    */
@@ -91,7 +93,8 @@ public interface FolioS3Client {
 
   /**
    * Returns presigned url for object on S3-compatible storage
-   * @param path - the path to the file on S3-compatible storage
+   *
+   * @param path   - the path to the file on S3-compatible storage
    * @param method - http method
    * @return presigned url of object
    */
@@ -101,4 +104,72 @@ public interface FolioS3Client {
    * Creates bucket. Bucket name should be declared in {@link S3ClientProperties}
    */
   void createBucketIfNotExists();
+
+  /**
+   * Initiates a multipart upload, returning the upload ID.
+   *
+   * @param path - the path to the file on S3-compatible storage
+   * @return the multipart upload ID
+   * @see https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateMultipartUpload.html
+   */
+  String initiateMultipartUpload(String path);
+
+  /**
+   * Gets a presigned URL to PUT a part of a multipart upload
+   *
+   * @param path       - the path to the file on S3-compatible storage
+   * @param uploadId   - the upload ID from
+   *                   {@link #initiateMultipartUpload(String)}
+   * @param partNumber - the part number of the part to upload, starts at 1
+   * @return the presigned URL
+   * @see {@link #initiateMultipartUpload(String)}
+   */
+  String getPresignedMultipartUploadUrl(
+      String path,
+      String uploadId,
+      int partNumber);
+
+  /**
+   * Uploads a part of a multipart upload from a local file
+   *
+   * @param path       - the path to the file on S3-compatible storage
+   * @param uploadId   - the upload ID from
+   *                   {@link #initiateMultipartUpload(String)}
+   * @param partNumber - the part number of the part to upload, starts at 1
+   * @param filename   - the local uploaded file on disk
+   * @return the upload's eTag
+   * @see {@link #initiateMultipartUpload(String)}
+   */
+  String uploadMultipartPart(
+      String path,
+      String uploadId,
+      int partNumber,
+      String filename);
+
+  /**
+   * Aborts a multipart upload. Note: **this may need to be done multiple times**
+   *
+   * @param path     - the path to the file on S3-compatible storage
+   * @param uploadId - the upload ID from {@link #initiateMultipartUpload(String)}
+   * @see https://docs.aws.amazon.com/AmazonS3/latest/API/API_AbortMultipartUpload.html
+   * @see {@link #initiateMultipartUpload(String)}
+   */
+  void abortMultipartUpload(String path, String uploadId);
+
+  /**
+   * Completes a multipart upload. Note: **this may take several minutes to
+   * complete**
+   *
+   * @param path      - the path to the file on S3-compatible storage
+   * @param uploadId  - the upload ID from
+   *                  {@link #initiateMultipartUpload(String)}
+   * @param partETags - the list of uploaded parts' eTags
+   * @see https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html
+   * @see {@link #initiateMultipartUpload(String)}
+   * @see {@link #createPresignedMultipartUploadUrl(String, String, int)}
+   */
+  void completeMultipartUpload(
+      String path,
+      String uploadId,
+      List<String> partETags);
 }
