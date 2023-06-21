@@ -348,7 +348,7 @@ public class MinioS3Client implements FolioS3Client {
   }
 
   @Override
-  public String createPresignedMultipartUploadUrl(
+  public String getPresignedMultipartUploadUrl(
     String path,
     String uploadId,
     int partNumber

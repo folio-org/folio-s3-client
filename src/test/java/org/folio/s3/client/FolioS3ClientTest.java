@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -73,12 +74,12 @@ class FolioS3ClientTest {
   @BeforeAll
   public static void setUp() {
     s3 = new GenericContainer<>("minio/minio:latest").withEnv("MINIO_ACCESS_KEY", S3_ACCESS_KEY)
-      .withEnv("MINIO_SECRET_KEY", S3_SECRET_KEY)
-      .withCommand("server /data")
-      .withExposedPorts(S3_PORT)
-      .waitingFor(new HttpWaitStrategy().forPath("/minio/health/ready")
-        .forPort(S3_PORT)
-        .withStartupTimeout(Duration.ofSeconds(10)));
+        .withEnv("MINIO_SECRET_KEY", S3_SECRET_KEY)
+        .withCommand("server /data")
+        .withExposedPorts(S3_PORT)
+        .waitingFor(new HttpWaitStrategy().forPath("/minio/health/ready")
+            .forPort(S3_PORT)
+            .withStartupTimeout(Duration.ofSeconds(10)));
     s3.start();
 
     endpoint = format("http://%s:%s", s3.getHost(), s3.getFirstMappedPort());
@@ -104,8 +105,8 @@ class FolioS3ClientTest {
     List<String> expected;
     try {
       expected = original.stream()
-        .map(p -> s3Client.write(p, new ByteArrayInputStream(content)))
-        .collect(toList());
+          .map(p -> s3Client.write(p, new ByteArrayInputStream(content)))
+          .collect(toList());
     } catch (Exception e) {
       throw new IOException(e);
     }
@@ -113,7 +114,8 @@ class FolioS3ClientTest {
     assertTrue(Objects.deepEquals(original, expected));
 
     assertTrue(
-        Objects.deepEquals(s3Client.list("directory_1/"), List.of("directory_1/CSV_Data_1.csv", "directory_1/directory_2/")));
+        Objects.deepEquals(s3Client.list("directory_1/"),
+            List.of("directory_1/CSV_Data_1.csv", "directory_1/directory_2/")));
 
     assertTrue(Objects.deepEquals(s3Client.list("directory_1/directory_2/"),
         List.of("directory_1/directory_2/CSV_Data_2.csv", "directory_1/directory_2/directory_3/")));
@@ -130,13 +132,12 @@ class FolioS3ClientTest {
       }
     });
 
-
     // Remove files files
     String[] paths = new String[original.size()];
     original.toArray(paths);
     s3Client.remove(paths);
     assertEquals(0, s3Client.list("directory_1/")
-      .size());
+        .size());
   }
 
   @ParameterizedTest
@@ -163,9 +164,9 @@ class FolioS3ClientTest {
     s3Client.upload(tempFilePath.toString(), fileOnStorage);
 
     assertEquals(1, s3Client.list("directory_1/")
-      .size());
+        .size());
     assertEquals("directory_1/CSV_Data_1.csv", s3Client.list("directory_1/")
-      .get(0));
+        .get(0));
 
     // Read files content
     try (var is = s3Client.read(fileOnStorage)) {
@@ -177,7 +178,7 @@ class FolioS3ClientTest {
     // Remove files files
     s3Client.remove(fileOnStorage);
     assertEquals("[]", s3Client.list("directory_1/")
-      .toString());
+        .toString());
 
     Files.deleteIfExists(tempFilePath);
   }
@@ -218,7 +219,7 @@ class FolioS3ClientTest {
       @SneakyThrows
       public CompletableFuture<ObjectWriteResponse> putObject(PutObjectArgs args) {
         if (args.extraQueryParams()
-          .isEmpty()) {
+            .isEmpty()) {
           return super.putObject(args);
         }
         throw new NegativeArraySizeException("greetings from mock");
@@ -226,9 +227,11 @@ class FolioS3ClientTest {
 
       @SneakyThrows
       public CompletableFuture<AbortMultipartUploadResponse> abortMultipartUploadAsync(String bucketName, String region,
-          String objectName, String uploadId, Multimap<String, String> extraHeaders, Multimap<String, String> extraQueryParams) {
+          String objectName, String uploadId, Multimap<String, String> extraHeaders,
+          Multimap<String, String> extraQueryParams) {
         aborted.set(true);
-        return super.abortMultipartUploadAsync(bucketName, region, objectName, uploadId, extraHeaders, extraQueryParams);
+        return super.abortMultipartUploadAsync(bucketName, region, objectName, uploadId, extraHeaders,
+            extraQueryParams);
       }
     };
     var s3Client = new MinioS3Client(properties, mock);
@@ -237,7 +240,7 @@ class FolioS3ClientTest {
     var stream = new ByteArrayInputStream(content);
     var e = assertThrows(S3ClientException.class, () -> s3Client.append(path, stream));
     assertEquals("greetings from mock", e.getCause()
-      .getMessage());
+        .getMessage());
     assertTrue(aborted.get());
   }
 
@@ -282,7 +285,7 @@ class FolioS3ClientTest {
     var stream = new ByteArrayInputStream(content);
     var e = assertThrows(S3ClientException.class, () -> mockClient.append(path, stream));
     assertEquals("greetings from mock", e.getCause()
-      .getMessage());
+        .getMessage());
     assertTrue(aborted.get());
   }
 
@@ -299,7 +302,8 @@ class FolioS3ClientTest {
     assertThrows(S3ClientException.class, () -> s3Client.upload(fakeLocalPath, fakeLocalPath));
 
     // compose
-//    assertThrows(S3ClientException.class, () -> s3Client.append(fakeRemotePath, new ByteArrayInputStream(new byte[0])));
+    // assertThrows(S3ClientException.class, () -> s3Client.append(fakeRemotePath,
+    // new ByteArrayInputStream(new byte[0])));
 
     // write
     assertThrows(S3ClientException.class, () -> s3Client.write(fakeLocalPath, null));
@@ -307,18 +311,18 @@ class FolioS3ClientTest {
     // remove
     assertThrows(S3ClientException.class, () -> s3Client.remove(StringUtils.EMPTY));
     assertTrue(s3Client.remove(new String[0])
-      .isEmpty());
+        .isEmpty());
 
     // read
     assertThrows(S3ClientException.class, () -> s3Client.read(fakeRemotePath));
 
     // list
     assertTrue(s3Client.list(fakeRemotePath)
-      .isEmpty());
+        .isEmpty());
   }
 
   @ParameterizedTest
-  @ValueSource(ints = {SMALL_SIZE, LARGE_SIZE})
+  @ValueSource(ints = { SMALL_SIZE, LARGE_SIZE })
   void testRemoteStorageWriter(int size) throws IOException {
     final String path = "opt-writer/test.txt";
 
@@ -357,22 +361,20 @@ class FolioS3ClientTest {
     var fileOnStorage = "directory/file.ext";
 
     List<byte[]> contents = Arrays.asList(
-      getRandomBytes(LARGE_SIZE),
-      getRandomBytes(LARGE_SIZE),
-      getRandomBytes(SMALL_SIZE)
-    );
+        getRandomBytes(LARGE_SIZE),
+        getRandomBytes(LARGE_SIZE),
+        getRandomBytes(SMALL_SIZE));
     List<Path> tempFilePaths = Arrays.asList(
-      Paths.get("part1"),
-      Paths.get("part2"),
-      Paths.get("part3")
-    );
+        Paths.get("part1"),
+        Paths.get("part2"),
+        Paths.get("part3"));
 
     IntStream.range(0, 3).forEach(i -> {
       try {
         Files.deleteIfExists(tempFilePaths.get(i));
         Files.createFile(tempFilePaths.get(i));
         Files.write(tempFilePaths.get(i), contents.get(i));
-      } catch(IOException e) {
+      } catch (IOException e) {
         throw new UncheckedIOException(e);
       }
     });
@@ -383,18 +385,17 @@ class FolioS3ClientTest {
 
     List<String> eTags = IntStream.rangeClosed(1, 3).mapToObj(i -> {
       // get presigned URLs
-      String link = s3Client.createPresignedMultipartUploadUrl(fileOnStorage, uploadId, i);
+      String link = s3Client.getPresignedMultipartUploadUrl(fileOnStorage, uploadId, i);
       assertNotNull(link);
       assertTrue(link.contains("partNumber=" + i));
       assertTrue(link.contains(fileOnStorage));
 
       // upload it (normal way)
       String eTag = s3Client.uploadMultipartPart(
-        fileOnStorage,
-        uploadId,
-        i,
-        tempFilePaths.get(i - 1).toString()
-      );
+          fileOnStorage,
+          uploadId,
+          i,
+          tempFilePaths.get(i - 1).toString());
       assertNotNull(eTag);
       return eTag;
     }).collect(toList());
@@ -413,7 +414,8 @@ class FolioS3ClientTest {
       byte[] fromS3 = is.readAllBytes();
       assertTrue(Objects.deepEquals(contents.get(0), Arrays.copyOfRange(fromS3, 0, LARGE_SIZE)));
       assertTrue(Objects.deepEquals(contents.get(1), Arrays.copyOfRange(fromS3, LARGE_SIZE, LARGE_SIZE * 2)));
-      assertTrue(Objects.deepEquals(contents.get(2), Arrays.copyOfRange(fromS3, LARGE_SIZE * 2, LARGE_SIZE * 2 + SMALL_SIZE)));
+      assertTrue(
+          Objects.deepEquals(contents.get(2), Arrays.copyOfRange(fromS3, LARGE_SIZE * 2, LARGE_SIZE * 2 + SMALL_SIZE)));
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -425,7 +427,7 @@ class FolioS3ClientTest {
     tempFilePaths.forEach(path -> {
       try {
         Files.deleteIfExists(path);
-      } catch(IOException e) {
+      } catch (IOException e) {
         throw new UncheckedIOException(e);
       }
     });
@@ -442,6 +444,7 @@ class FolioS3ClientTest {
 
     byte[] content = getRandomBytes(LARGE_SIZE);
     Path tempFilePath = Paths.get("part1");
+    String tempFilePathString = tempFilePath.toString();
 
     Files.deleteIfExists(tempFilePath);
     Files.createFile(tempFilePath);
@@ -456,31 +459,27 @@ class FolioS3ClientTest {
 
     // now, all further operations should fail...
     assertThrows(
-      S3ClientException.class,
-      () -> s3Client.uploadMultipartPart(
-        fileOnStorage,
-        uploadId,
-        1,
-        tempFilePath.toString()
-      )
-    );
+        S3ClientException.class,
+        () -> s3Client.uploadMultipartPart(
+            fileOnStorage,
+            uploadId,
+            1,
+            tempFilePathString));
     assertThrows(
-      S3ClientException.class,
-      () -> s3Client.completeMultipartUpload(fileOnStorage, uploadId, Arrays.asList())
-    );
+        S3ClientException.class,
+        () -> s3Client.completeMultipartUpload(fileOnStorage, uploadId, new ArrayList<>()));
 
-    // the presigned URL will always generate successfully, only failing later upon upload
+    // the presigned URL will always generate successfully, only failing later upon
+    // upload
     // we'll give a bad part number to simulate failure
     assertThrows(
-      S3ClientException.class,
-      () -> s3Client.completeMultipartUpload(fileOnStorage, uploadId, Arrays.asList())
-    );
+        S3ClientException.class,
+        () -> s3Client.getPresignedMultipartUploadUrl(fileOnStorage, uploadId, -1));
 
     // and to check that a bad filename results in failure
     assertThrows(
-      S3ClientException.class,
-      () -> s3Client.initiateMultipartUpload("")
-    );
+        S3ClientException.class,
+        () -> s3Client.initiateMultipartUpload(""));
 
     // nothing should have been saved
     assertEquals("[]", s3Client.list("directory/").toString());
@@ -491,20 +490,20 @@ class FolioS3ClientTest {
   // TODO: delete isAwsSdk in the future because of AWS S3 will be unsupported
   public static S3ClientProperties getS3ClientProperties(boolean isAwsSdk, String endpoint) {
     return S3ClientProperties.builder()
-      .endpoint(endpoint)
-      .forcePathStyle(true)
-      .secretKey(S3_SECRET_KEY)
-      .accessKey(S3_ACCESS_KEY)
-      .bucket(S3_BUCKET)
-      .awsSdk(isAwsSdk)
-      .region(S3_REGION)
-      .build();
+        .endpoint(endpoint)
+        .forcePathStyle(true)
+        .secretKey(S3_SECRET_KEY)
+        .accessKey(S3_ACCESS_KEY)
+        .bucket(S3_BUCKET)
+        .awsSdk(isAwsSdk)
+        .region(S3_REGION)
+        .build();
   }
 
   public static byte[] getRandomBytes(int size) {
     var original = new byte[size];
     ThreadLocalRandom.current()
-      .nextBytes(original);
+        .nextBytes(original);
     return original;
   }
 }

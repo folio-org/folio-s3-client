@@ -124,7 +124,7 @@ public interface FolioS3Client {
    * @return the presigned URL
    * @see {@link #initiateMultipartUpload(String)}
    */
-  String createPresignedMultipartUploadUrl(
+  String getPresignedMultipartUploadUrl(
       String path,
       String uploadId,
       int partNumber);
