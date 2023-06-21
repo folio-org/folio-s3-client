@@ -397,7 +397,7 @@ class FolioS3ClientTest {
       );
       assertNotNull(eTag);
       return eTag;
-    }).toList();
+    }).collect(toList());
 
     // complete upload
     s3Client.completeMultipartUpload(fileOnStorage, uploadId, eTags);
