@@ -105,8 +105,8 @@ class FolioS3ClientTest {
     List<String> expected;
     try {
       expected = original.stream()
-          .map(p -> s3Client.write(p, new ByteArrayInputStream(content)))
-          .collect(toList());
+        .map(p -> s3Client.write(p, new ByteArrayInputStream(content)))
+        .collect(toList());
     } catch (Exception e) {
       throw new IOException(e);
     }
@@ -114,8 +114,7 @@ class FolioS3ClientTest {
     assertTrue(Objects.deepEquals(original, expected));
 
     assertTrue(
-        Objects.deepEquals(s3Client.list("directory_1/"),
-            List.of("directory_1/CSV_Data_1.csv", "directory_1/directory_2/")));
+        Objects.deepEquals(s3Client.list("directory_1/"), List.of("directory_1/CSV_Data_1.csv", "directory_1/directory_2/")));
 
     assertTrue(Objects.deepEquals(s3Client.list("directory_1/directory_2/"),
         List.of("directory_1/directory_2/CSV_Data_2.csv", "directory_1/directory_2/directory_3/")));
@@ -132,12 +131,13 @@ class FolioS3ClientTest {
       }
     });
 
+
     // Remove files files
     String[] paths = new String[original.size()];
     original.toArray(paths);
     s3Client.remove(paths);
     assertEquals(0, s3Client.list("directory_1/")
-        .size());
+      .size());
   }
 
   @ParameterizedTest
@@ -164,9 +164,9 @@ class FolioS3ClientTest {
     s3Client.upload(tempFilePath.toString(), fileOnStorage);
 
     assertEquals(1, s3Client.list("directory_1/")
-        .size());
+      .size());
     assertEquals("directory_1/CSV_Data_1.csv", s3Client.list("directory_1/")
-        .get(0));
+      .get(0));
 
     // Read files content
     try (var is = s3Client.read(fileOnStorage)) {
@@ -178,7 +178,7 @@ class FolioS3ClientTest {
     // Remove files files
     s3Client.remove(fileOnStorage);
     assertEquals("[]", s3Client.list("directory_1/")
-        .toString());
+      .toString());
 
     Files.deleteIfExists(tempFilePath);
   }
@@ -219,7 +219,7 @@ class FolioS3ClientTest {
       @SneakyThrows
       public CompletableFuture<ObjectWriteResponse> putObject(PutObjectArgs args) {
         if (args.extraQueryParams()
-            .isEmpty()) {
+          .isEmpty()) {
           return super.putObject(args);
         }
         throw new NegativeArraySizeException("greetings from mock");
@@ -227,11 +227,9 @@ class FolioS3ClientTest {
 
       @SneakyThrows
       public CompletableFuture<AbortMultipartUploadResponse> abortMultipartUploadAsync(String bucketName, String region,
-          String objectName, String uploadId, Multimap<String, String> extraHeaders,
-          Multimap<String, String> extraQueryParams) {
+          String objectName, String uploadId, Multimap<String, String> extraHeaders, Multimap<String, String> extraQueryParams) {
         aborted.set(true);
-        return super.abortMultipartUploadAsync(bucketName, region, objectName, uploadId, extraHeaders,
-            extraQueryParams);
+        return super.abortMultipartUploadAsync(bucketName, region, objectName, uploadId, extraHeaders, extraQueryParams);
       }
     };
     var s3Client = new MinioS3Client(properties, mock);
@@ -240,7 +238,7 @@ class FolioS3ClientTest {
     var stream = new ByteArrayInputStream(content);
     var e = assertThrows(S3ClientException.class, () -> s3Client.append(path, stream));
     assertEquals("greetings from mock", e.getCause()
-        .getMessage());
+      .getMessage());
     assertTrue(aborted.get());
   }
 
@@ -285,7 +283,7 @@ class FolioS3ClientTest {
     var stream = new ByteArrayInputStream(content);
     var e = assertThrows(S3ClientException.class, () -> mockClient.append(path, stream));
     assertEquals("greetings from mock", e.getCause()
-        .getMessage());
+      .getMessage());
     assertTrue(aborted.get());
   }
 
@@ -302,8 +300,7 @@ class FolioS3ClientTest {
     assertThrows(S3ClientException.class, () -> s3Client.upload(fakeLocalPath, fakeLocalPath));
 
     // compose
-    // assertThrows(S3ClientException.class, () -> s3Client.append(fakeRemotePath,
-    // new ByteArrayInputStream(new byte[0])));
+//    assertThrows(S3ClientException.class, () -> s3Client.append(fakeRemotePath, new ByteArrayInputStream(new byte[0])));
 
     // write
     assertThrows(S3ClientException.class, () -> s3Client.write(fakeLocalPath, null));
@@ -311,18 +308,18 @@ class FolioS3ClientTest {
     // remove
     assertThrows(S3ClientException.class, () -> s3Client.remove(StringUtils.EMPTY));
     assertTrue(s3Client.remove(new String[0])
-        .isEmpty());
+      .isEmpty());
 
     // read
     assertThrows(S3ClientException.class, () -> s3Client.read(fakeRemotePath));
 
     // list
     assertTrue(s3Client.list(fakeRemotePath)
-        .isEmpty());
+      .isEmpty());
   }
 
   @ParameterizedTest
-  @ValueSource(ints = { SMALL_SIZE, LARGE_SIZE })
+  @ValueSource(ints = {SMALL_SIZE, LARGE_SIZE})
   void testRemoteStorageWriter(int size) throws IOException {
     final String path = "opt-writer/test.txt";
 
@@ -414,8 +411,7 @@ class FolioS3ClientTest {
       byte[] fromS3 = is.readAllBytes();
       assertTrue(Objects.deepEquals(contents.get(0), Arrays.copyOfRange(fromS3, 0, LARGE_SIZE)));
       assertTrue(Objects.deepEquals(contents.get(1), Arrays.copyOfRange(fromS3, LARGE_SIZE, LARGE_SIZE * 2)));
-      assertTrue(
-          Objects.deepEquals(contents.get(2), Arrays.copyOfRange(fromS3, LARGE_SIZE * 2, LARGE_SIZE * 2 + SMALL_SIZE)));
+      assertTrue(Objects.deepEquals(contents.get(2), Arrays.copyOfRange(fromS3, LARGE_SIZE * 2, LARGE_SIZE * 2 + SMALL_SIZE)));
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -490,20 +486,20 @@ class FolioS3ClientTest {
   // TODO: delete isAwsSdk in the future because of AWS S3 will be unsupported
   public static S3ClientProperties getS3ClientProperties(boolean isAwsSdk, String endpoint) {
     return S3ClientProperties.builder()
-        .endpoint(endpoint)
-        .forcePathStyle(true)
-        .secretKey(S3_SECRET_KEY)
-        .accessKey(S3_ACCESS_KEY)
-        .bucket(S3_BUCKET)
-        .awsSdk(isAwsSdk)
-        .region(S3_REGION)
-        .build();
+      .endpoint(endpoint)
+      .forcePathStyle(true)
+      .secretKey(S3_SECRET_KEY)
+      .accessKey(S3_ACCESS_KEY)
+      .bucket(S3_BUCKET)
+      .awsSdk(isAwsSdk)
+      .region(S3_REGION)
+      .build();
   }
 
   public static byte[] getRandomBytes(int size) {
     var original = new byte[size];
     ThreadLocalRandom.current()
-        .nextBytes(original);
+      .nextBytes(original);
     return original;
   }
 }
