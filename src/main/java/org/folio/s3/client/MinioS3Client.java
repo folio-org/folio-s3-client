@@ -43,8 +43,14 @@ import io.minio.messages.Part;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
+// 2142: we wrap and rethrow InterruptedException as S3ClientException
+// 2221: we want to catch the exceptions from the minio client, but the list is long,
+//         so we simply specify `Exception` for simplicity
+@SuppressWarnings({"java:S2142", "java:S2221"})
 public class MinioS3Client implements FolioS3Client {
 
+  private static final String PARAM_MULTIPART_PART_NUMBER = "partNumber";
+  private static final String PARAM_MULTIPART_UPLOAD_ID = "uploadId";
   private static final int EXPIRATION_TIME_IN_MINUTES = 10;
   private final ExtendedMinioAsyncClient client;
   private final String bucket;
@@ -88,7 +94,6 @@ public class MinioS3Client implements FolioS3Client {
     return ExtendedMinioAsyncClient.build(builder);
   }
 
-  @SuppressWarnings("java:S2142") // we wrap and rethrow InterruptedException
   public void createBucketIfNotExists() {
     try {
       if (StringUtils.isBlank(bucket)) {
@@ -114,7 +119,6 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
-  @SuppressWarnings("java:S2142") // we wrap and rethrow InterruptedException
   private String upload(String path, String filename, Map<String, String> headers) {
     try {
       return client.uploadObject(UploadObjectArgs.builder()
@@ -140,7 +144,6 @@ public class MinioS3Client implements FolioS3Client {
    * {@code @deprecated, won't be used in future due to unstable work}
    */
   @Deprecated(forRemoval = true)
-  @SuppressWarnings("java:S2142") // we wrap and rethrow InterruptedException
   @Override
   public String append(String path, InputStream is) {
     String uploadId = null;
@@ -171,7 +174,7 @@ public class MinioS3Client implements FolioS3Client {
         .region(region)
         .object(path)
         .stream(is, -1, MAX_PART_SIZE)
-        .extraQueryParams(Map.of("uploadId", uploadId, "partNumber", "2"))
+        .extraQueryParams(Map.of(PARAM_MULTIPART_UPLOAD_ID, uploadId, PARAM_MULTIPART_PART_NUMBER, "2"))
         .build());
       Part[] parts = { new Part(1, part1.get()
         .result()
@@ -194,7 +197,6 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
-  @SuppressWarnings("java:S2142") // we wrap and rethrow InterruptedException
   @Override
   public String write(String path, InputStream is) {
     log.debug("Writing with using Minio client");
@@ -213,7 +215,6 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
-  @SuppressWarnings("java:S2142") // we wrap and rethrow InterruptedException
   @Override
   public String remove(String path) {
     try {
@@ -278,7 +279,6 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
-  @SuppressWarnings("java:S2142") // we wrap and rethrow InterruptedException
   @Override
   public InputStream read(String path) {
     try {
@@ -293,7 +293,6 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
-  @SuppressWarnings("java:S2142") // we wrap and rethrow InterruptedException
   @Override
   public long getSize(String path) {
     try {
@@ -360,11 +359,11 @@ public class MinioS3Client implements FolioS3Client {
         .object(path)
         .method(Method.PUT)
         .expiry(EXPIRATION_TIME_IN_MINUTES, TimeUnit.MINUTES)
-        .extraQueryParams(Map.of("partNumber", String.valueOf(partNumber), "uploadId", uploadId))
+        .extraQueryParams(Map.of(PARAM_MULTIPART_PART_NUMBER, String.valueOf(partNumber), PARAM_MULTIPART_UPLOAD_ID, uploadId))
         .build());
     } catch (Exception e) {
       throw new S3ClientException(
-        "Error getting presigned url for upload ID: " + uploadId + ", part #: " + partNumber,
+        "Error getting presigned url for part #" + partNumber + "of upload ID: " + uploadId,
         e
       );
     }
@@ -385,7 +384,7 @@ public class MinioS3Client implements FolioS3Client {
             .region(region)
             .object(path)
             .stream(stream, -1, MAX_PART_SIZE)
-            .extraQueryParams(Map.of("uploadId", uploadId, "partNumber", String.valueOf(partNumber)))
+            .extraQueryParams(Map.of(PARAM_MULTIPART_UPLOAD_ID, uploadId, PARAM_MULTIPART_PART_NUMBER, String.valueOf(partNumber)))
             .build()
         )
         .get()
