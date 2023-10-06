@@ -1,3 +1,7 @@
+## v1.1.0 - 2023-10-06
+* [FOLS3CL-11](https://issues.folio.org/browse/FOLS3CL-11) Add method for additional presigned request generation
+* [FOLS3CL-13](https://issues.folio.org/browse/FOLS3CL-13) Add methods for multipart uploads
+
 ## v1.0.0 - Released
 The initial release of the folio-s3-client.
 
