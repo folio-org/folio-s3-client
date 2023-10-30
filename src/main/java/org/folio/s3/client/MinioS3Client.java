@@ -205,8 +205,7 @@ public class MinioS3Client implements FolioS3Client {
         .bucket(bucket)
         .region(region)
         .object(path)
-        // use max part size to not exceed the maximum number of parts (10000)
-        .stream(is, -1, MAX_PART_SIZE)
+        .stream(is, -1, MIN_MULTIPART_SIZE)
         .build())
         .get()
         .object();
