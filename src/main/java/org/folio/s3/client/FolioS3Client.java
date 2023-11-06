@@ -110,7 +110,8 @@ public interface FolioS3Client {
    *
    * @param path - the path to the file on S3-compatible storage
    * @return the multipart upload ID
-   * @see https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateMultipartUpload.html
+   * @see <a href="https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateMultipartUpload.html">
+   *     https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateMultipartUpload.html</a>
    */
   String initiateMultipartUpload(String path);
 
@@ -122,7 +123,7 @@ public interface FolioS3Client {
    *                   {@link #initiateMultipartUpload(String)}
    * @param partNumber - the part number of the part to upload, starts at 1
    * @return the presigned URL
-   * @see {@link #initiateMultipartUpload(String)}
+   * @see #initiateMultipartUpload(String)
    */
   String getPresignedMultipartUploadUrl(
       String path,
@@ -138,7 +139,7 @@ public interface FolioS3Client {
    * @param partNumber - the part number of the part to upload, starts at 1
    * @param filename   - the local uploaded file on disk
    * @return the upload's eTag
-   * @see {@link #initiateMultipartUpload(String)}
+   * @see #initiateMultipartUpload(String)
    */
   String uploadMultipartPart(
       String path,
@@ -151,8 +152,9 @@ public interface FolioS3Client {
    *
    * @param path     - the path to the file on S3-compatible storage
    * @param uploadId - the upload ID from {@link #initiateMultipartUpload(String)}
-   * @see https://docs.aws.amazon.com/AmazonS3/latest/API/API_AbortMultipartUpload.html
-   * @see {@link #initiateMultipartUpload(String)}
+   * @see <a href="https://docs.aws.amazon.com/AmazonS3/latest/API/API_AbortMultipartUpload.html">
+   *     https://docs.aws.amazon.com/AmazonS3/latest/API/API_AbortMultipartUpload.html</a>
+   * @see #initiateMultipartUpload(String)
    */
   void abortMultipartUpload(String path, String uploadId);
 
@@ -164,9 +166,10 @@ public interface FolioS3Client {
    * @param uploadId  - the upload ID from
    *                  {@link #initiateMultipartUpload(String)}
    * @param partETags - the list of uploaded parts' eTags
-   * @see https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html
-   * @see {@link #initiateMultipartUpload(String)}
-   * @see {@link #createPresignedMultipartUploadUrl(String, String, int)}
+   * @see <a href="https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html">
+   *   https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html</a>
+   * @see #initiateMultipartUpload(String)
+   * @see #getPresignedMultipartUploadUrl(String, String, int)
    */
   void completeMultipartUpload(
       String path,
