@@ -1,7 +1,7 @@
-## v1.2.0 - Released
+## v2.0.0 - Released
 This release contains only upgrade to Java 17
 
-[Full Changelog](https://github.com/folio-org/folio-s3-client/compare/v1.1.0...v1.2.0)
+[Full Changelog](https://github.com/folio-org/folio-s3-client/compare/v1.1.0...v2.0.0)
 
 ### Tasks
 * [FOLS3CL-20](https://issues.folio.org/browse/FOLS3CL-20) Java 17, upgrade dependencies for Poppy
