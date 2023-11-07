@@ -16,6 +16,7 @@
   </licenses>
 
   <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <lombok.version>1.18.30</lombok.version>
     <apache.commons.lang3.version>3.13.0</apache.commons.lang3.version>
     <minio.version>8.5.6</minio.version>
@@ -154,7 +155,7 @@
         <executions>
           <execution>
             <id>attach-javadocs</id>
-            <phase>deploy</phase>
+            <phase>verify</phase>
             <goals>
               <goal>jar</goal>
             </goals>
