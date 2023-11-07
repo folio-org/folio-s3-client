@@ -77,10 +77,11 @@ public class AwsS3Client extends MinioS3Client {
   public String write(String path, InputStream is) {
     log.debug("Writing with using AWS SDK client");
     try (is) {
-      client.putObject(PutObjectRequest.builder()
+       var size = is.available();
+       client.putObject(PutObjectRequest.builder()
         .bucket(bucket)
         .key(path)
-        .build(), RequestBody.fromBytes(is.readAllBytes()));
+        .build(), RequestBody.fromInputStream(is, size));
       return path;
     } catch (Exception e) {
       throw new S3ClientException("Cannot write file: " + path, e);

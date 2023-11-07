@@ -1,3 +1,10 @@
+## v1.1.1 - Released
+This release contains optimisation of memory utilization for large files writing to S3-storage.
+
+### Bug fixes
+* [FOLS3CL-18](https://issues.folio.org/browse/FOLS3CL-18) - folio-s3-client OOM during input stream writing
+
+
 ## v1.1.0 - 2023-10-06
 * [FOLS3CL-11](https://issues.folio.org/browse/FOLS3CL-11) Add method for additional presigned request generation
 * [FOLS3CL-13](https://issues.folio.org/browse/FOLS3CL-13) Add methods for multipart uploads

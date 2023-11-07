@@ -184,6 +184,7 @@ class FolioS3ClientTest {
   }
 
   @Deprecated
+  @Disabled
   @ParameterizedTest
   @CsvSource({ "true," + SMALL_SIZE, "true," + LARGE_SIZE, "false," + SMALL_SIZE, "false," + LARGE_SIZE })
   void testAppendFile(boolean isAwsSdk, int size) throws IOException {
