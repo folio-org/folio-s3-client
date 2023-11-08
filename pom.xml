@@ -19,7 +19,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <lombok.version>1.18.30</lombok.version>
     <apache.commons.lang3.version>3.13.0</apache.commons.lang3.version>
-    <minio.version>8.5.4</minio.version>
+    <minio.version>8.5.2</minio.version>
     <log4j.version>2.20.0</log4j.version>
     <aws.sdk.version>2.19.2</aws.sdk.version>
     <junit.version>5.10.0</junit.version>
