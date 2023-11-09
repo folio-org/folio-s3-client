@@ -160,7 +160,7 @@ class FolioS3ClientTest {
       throw new IOException(e);
     }
 
-    assertTrue(original.equals(expected));
+    assertEquals(original, expected);
 
     assertTrue(
         Objects.deepEquals(s3Client.list("directory_1/"), List.of("directory_1/CSV_Data_1.csv")));
