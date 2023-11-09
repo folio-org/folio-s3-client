@@ -1,4 +1,13 @@
 ## v2.0.1 - Released
+This release contains improving of folio-s3-client read-method
+
+[Full Changelog](https://github.com/folio-org/folio-s3-client/compare/v2.0.1...v2.0.2)
+
+### Tasks
+* [FOLS3CL-18](https://issues.folio.org/browse/FOLS3CL-18) folio-s3-client OOM during input stream writing
+
+
+## v2.0.1 - Released
 This release contains reverting of AWS SDK version
 
 [Full Changelog](https://github.com/folio-org/folio-s3-client/compare/v2.0.0...v2.0.1)
