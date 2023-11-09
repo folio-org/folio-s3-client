@@ -84,10 +84,10 @@ public class AwsS3Client extends MinioS3Client {
       ReadableByteChannel channel = newChannel(is);
       ByteBuffer buffer = ByteBuffer.allocate(1024);
       IOUtils.readFully(channel, buffer);
-       client.putObject(PutObjectRequest.builder()
-        .bucket(bucket)
-        .key(path)
-        .build(), RequestBody.fromByteBuffer(buffer));
+      client.putObject(PutObjectRequest.builder()
+              .bucket(bucket)
+              .key(path)
+              .build(), RequestBody.fromByteBuffer(buffer));
       return path;
     } catch (Exception e) {
       throw new S3ClientException("Cannot write file: " + path, e);
