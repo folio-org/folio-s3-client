@@ -122,6 +122,7 @@ class FolioS3ClientTest {
     // Read files content
     original.forEach(p -> {
       try (var is = s3Client.read(p)) {
+        assertEquals(is.available(), content.length);
         assertTrue(Objects.deepEquals(content, is.readAllBytes()));
         var link = s3Client.getPresignedUrl(p);
         assertNotNull(link);
