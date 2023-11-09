@@ -1,3 +1,11 @@
+## v2.0.1 - Released
+This release contains reverting of AWS SDK version
+
+[Full Changelog](https://github.com/folio-org/folio-s3-client/compare/v2.0.0...v2.0.1)
+
+### Tasks
+* [FOLS3CL-20](https://issues.folio.org/browse/FOLS3CL-20) Java 17, upgrade dependencies for Poppy
+
 ## v2.0.0 - Released
 This release contains only upgrade to Java 17
 
