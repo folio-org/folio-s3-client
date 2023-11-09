@@ -1,11 +1,15 @@
 package org.folio.s3.client;
 
 import static io.minio.ObjectWriteArgs.MIN_MULTIPART_SIZE;
+import static java.nio.channels.Channels.newChannel;
 
 import java.io.InputStream;
 import java.io.SequenceInputStream;
 import java.net.URI;
+import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.exception.S3ClientException;
 
@@ -77,11 +81,13 @@ public class AwsS3Client extends MinioS3Client {
   public String write(String path, InputStream is) {
     log.debug("Writing with using AWS SDK client");
     try (is) {
-       var size = is.available();
-       client.putObject(PutObjectRequest.builder()
-        .bucket(bucket)
-        .key(path)
-        .build(), RequestBody.fromInputStream(is, size));
+      ReadableByteChannel channel = newChannel(is);
+      ByteBuffer buffer = ByteBuffer.allocate(1024);
+      IOUtils.readFully(channel, buffer);
+      client.putObject(PutObjectRequest.builder()
+              .bucket(bucket)
+              .key(path)
+              .build(), RequestBody.fromByteBuffer(buffer));
       return path;
     } catch (Exception e) {
       throw new S3ClientException("Cannot write file: " + path, e);
