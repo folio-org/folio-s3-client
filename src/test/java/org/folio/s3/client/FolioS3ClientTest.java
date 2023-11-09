@@ -142,6 +142,45 @@ class FolioS3ClientTest {
 
   @ParameterizedTest
   @ValueSource(booleans = { true, false })
+  void testWriteByStream(boolean isAwsSdk) throws IOException {
+    var properties = getS3ClientProperties(isAwsSdk, endpoint);
+    var s3Client = S3ClientFactory.getS3Client(properties);
+
+    s3Client.createBucketIfNotExists();
+
+    byte[] content = getRandomBytes(SMALL_SIZE);
+    String original = "directory_1/CSV_Data_1.csv";
+
+    // Write file content
+    String expected;
+    try {
+      InputStream is = new ByteArrayInputStream(content);
+      expected = s3Client.write(original, is, is.available());
+    } catch (Exception e) {
+      throw new IOException(e);
+    }
+
+    assertTrue(original.equals(expected));
+
+    assertTrue(
+        Objects.deepEquals(s3Client.list("directory_1/"), List.of("directory_1/CSV_Data_1.csv")));
+
+    // Read file content
+    try (var is = s3Client.read(expected)) {
+      assertTrue(Objects.deepEquals(content, is.readAllBytes()));
+      var link = s3Client.getPresignedUrl(expected);
+      assertNotNull(link);
+      assertTrue(link.contains(expected));
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    // Remove files files
+    s3Client.remove(expected);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = { true, false })
   void testUploadReadDeleteFile(boolean isAwsSdk) throws IOException {
     var properties = getS3ClientProperties(isAwsSdk, endpoint);
     var s3Client = S3ClientFactory.getS3Client(properties);
