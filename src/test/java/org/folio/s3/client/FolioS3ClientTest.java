@@ -175,7 +175,7 @@ class FolioS3ClientTest {
       throw new RuntimeException(e);
     }
 
-    // Remove files files
+    // Remove file
     s3Client.remove(expected);
   }
 
