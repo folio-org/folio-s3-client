@@ -216,6 +216,11 @@ public class MinioS3Client implements FolioS3Client {
   }
 
   @Override
+  public String write(String path, InputStream is, long size) {
+    return write(path, is);
+  }
+
+  @Override
   public String remove(String path) {
     try {
       client.removeObject(RemoveObjectArgs.builder()
