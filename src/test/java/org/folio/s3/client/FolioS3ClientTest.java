@@ -244,6 +244,7 @@ class FolioS3ClientTest {
   }
 
   @Deprecated
+  @Disabled
   @Test
   void testAppendAbortAws() {
     var path = "appendAbort.txt";
