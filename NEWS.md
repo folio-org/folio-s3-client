@@ -1,3 +1,8 @@
+## v2.0.4 - Released
+This release contains improving of folio-s3-client read-method
+
+[Full Changelog](https://github.com/folio-org/folio-s3-client/compare/v2.0.3...v2.0.4)
+
 ## v2.0.3 - Released
 This release contains reverting of AWS SDK version and improvements
 

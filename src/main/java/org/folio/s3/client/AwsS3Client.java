@@ -1,11 +1,15 @@
 package org.folio.s3.client;
 
 import static io.minio.ObjectWriteArgs.MIN_MULTIPART_SIZE;
+import static java.nio.channels.Channels.newChannel;
 
 import java.io.InputStream;
 import java.io.SequenceInputStream;
 import java.net.URI;
+import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.exception.S3ClientException;
 
