@@ -1,5 +1,5 @@
 ## v2.0.3 - Released
-This release contains reverting of AWS SDK version
+This release contains reverting of AWS SDK version and improvements
 
 [Full Changelog](https://github.com/folio-org/folio-s3-client/compare/v2.0.2...v2.0.3)
 
