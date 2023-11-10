@@ -34,6 +34,15 @@ public interface FolioS3Client {
   String write(String path, InputStream is);
 
   /**
+   * Writes Input Stream to a file on S3-compatible storage
+   *
+   * @param path the path to the file on S3-compatible storage
+   * @param is   the byte array with the bytes to write
+   * @return the path to the file
+   */
+  String write(String path, InputStream is, long size);
+
+  /**
    * Removes a file on S3 storage
    *
    * @param path the path to the file to delete
