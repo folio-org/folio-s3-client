@@ -1,11 +1,18 @@
-## v2.0.1 - Released
+## v2.0.3 - Released
+This release contains reverting of AWS SDK version and improvements
+
+[Full Changelog](https://github.com/folio-org/folio-s3-client/compare/v2.0.2...v2.0.3)
+
+### Tasks
+* [FOLS3CL-20](https://issues.folio.org/browse/FOLS3CL-20) Java 17, upgrade dependencies for Poppy
+
+## v2.0.2 - Released
 This release contains improving of folio-s3-client read-method
 
 [Full Changelog](https://github.com/folio-org/folio-s3-client/compare/v2.0.1...v2.0.2)
 
 ### Tasks
 * [FOLS3CL-18](https://issues.folio.org/browse/FOLS3CL-18) folio-s3-client OOM during input stream writing
-
 
 ## v2.0.1 - Released
 This release contains reverting of AWS SDK version
