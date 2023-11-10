@@ -3,6 +3,7 @@ package org.folio.s3.client;
 import static io.minio.ObjectWriteArgs.MAX_PART_SIZE;
 import static io.minio.ObjectWriteArgs.MIN_MULTIPART_SIZE;
 
+import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
