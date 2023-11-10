@@ -3,7 +3,6 @@ package org.folio.s3.client;
 import static io.minio.ObjectWriteArgs.MAX_PART_SIZE;
 import static io.minio.ObjectWriteArgs.MIN_MULTIPART_SIZE;
 
-import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
@@ -282,12 +281,12 @@ public class MinioS3Client implements FolioS3Client {
   @Override
   public InputStream read(String path) {
     try {
-     return new ByteArrayInputStream(client.getObject(GetObjectArgs.builder()
+     return client.getObject(GetObjectArgs.builder()
         .bucket(bucket)
         .region(region)
         .object(path)
         .build())
-        .get().readAllBytes());
+        .get();
     } catch (Exception e) {
       throw new S3ClientException("Error creating input stream for path: " + path, e);
     }
