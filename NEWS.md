@@ -1,3 +1,11 @@
+## v2.0.6 - Released
+This release contains fixing the vulnerabilities of AWS SDK
+
+[Full Changelog](https://github.com/folio-org/folio-s3-client/compare/v2.0.5...v2.0.6)
+
+### Bug fixes
+* [FOLS3CL-23](https://issues.folio.org/browse/FOLS3CL-23) software.amazon.awssdk:s3 security vulnerabilities
+
 ## v2.0.4 - Released
 This release contains improving of folio-s3-client read-method
 
