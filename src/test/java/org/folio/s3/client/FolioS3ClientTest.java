@@ -15,8 +15,6 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,13 +24,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.StreamSupport;
-
-import io.minio.Result;
-import io.minio.errors.*;
-import io.minio.messages.Item;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.client.impl.ExtendedMinioAsyncClient;
@@ -56,8 +48,6 @@ import io.minio.PutObjectArgs;
 import io.minio.http.Method;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
-import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonParseException;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonMappingException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
@@ -499,28 +489,12 @@ class FolioS3ClientTest {
       }
     }
 
-    // Call the iterableList method and handle exceptions
+    // Call the list method and handle exceptions
     List<String> actualObjects;
     try {
-      actualObjects = StreamSupport.stream(
-                      s3Client.iterableList("", 1000, null).spliterator(), false)
-              .map(result -> {
-                try {
-                  return result.get().objectName();
-                } catch (ErrorResponseException | InsufficientDataException | InternalException |
-                         InvalidKeyException | InvalidResponseException | IOException |
-                         NoSuchAlgorithmException |
-                         ServerException | XmlParserException e) {
-                  // Handle exceptions as needed
-                  // You may log or handle differently based on your application requirements
-                  e.printStackTrace();
-                  return null;
-                }
-              })
-              .filter(Objects::nonNull)
-              .collect(Collectors.toList());
+      actualObjects = s3Client.list("", 1000, null);
     } catch (Exception e) {
-      // Handle any other exceptions that might occur during iterableList
+      // Handle any other exceptions that might occur during list
       e.printStackTrace();
       actualObjects = Collections.emptyList();
     }
@@ -552,25 +526,13 @@ class FolioS3ClientTest {
       }
     }
 
-    // Call the iterableList method with non-null and non-empty startAfter
+    // Call the list method with non-null and non-empty startAfter
     List<String> actualObjects;
     try {
       String startAfterKey = "object2.txt";
-      actualObjects = new ArrayList<>();
-      for (Result<Item> result : s3Client.iterableList("", 1000, startAfterKey)) {
-        try {
-          actualObjects.add(result.get().objectName());
-        } catch (ErrorResponseException | InsufficientDataException | InternalException |
-                 InvalidKeyException | InvalidResponseException | IOException |
-                 NoSuchAlgorithmException |
-                 ServerException | XmlParserException e) {
-          // Handle exceptions as needed
-          // You may log or handle differently based on your application requirements
-          e.printStackTrace();
-        }
-      }
+      actualObjects = s3Client.list("", 1000, startAfterKey);
     } catch (Exception e) {
-      // Handle any other exceptions that might occur during iterableList
+      // Handle any other exceptions that might occur during list
       e.printStackTrace();
       actualObjects = Collections.emptyList();
     }

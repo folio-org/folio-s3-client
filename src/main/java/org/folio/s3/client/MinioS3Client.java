@@ -3,7 +3,6 @@ package org.folio.s3.client;
 import static io.minio.ObjectWriteArgs.MAX_PART_SIZE;
 import static io.minio.ObjectWriteArgs.MIN_MULTIPART_SIZE;
 
-import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
@@ -287,7 +286,9 @@ public class MinioS3Client implements FolioS3Client {
   }
 
   @Override
-  public Iterable<Result<Item>> iterableList(String path, int maxKeys, String startAfter) {
+  public List<String> list(String path, int maxKeys, String startAfter) {
+    List<String> fileNames = new ArrayList<>();
+
     ListObjectsArgs.Builder listObjectsArgsBuilder = ListObjectsArgs.builder()
             .bucket(this.bucket)
             .region(this.region)
@@ -298,7 +299,18 @@ public class MinioS3Client implements FolioS3Client {
       listObjectsArgsBuilder.startAfter(startAfter);
     }
 
-    return this.client.listObjects(listObjectsArgsBuilder.build());
+    try {
+      Iterable<Result<Item>> results = this.client.listObjects(listObjectsArgsBuilder.build());
+
+      for (Result<Item> result : results) {
+        Item item = result.get();
+        fileNames.add(item.objectName());
+      }
+    } catch (Exception e) {
+      throw new S3ClientException("Error getting list of objects for path: " + path, e);
+    }
+
+    return fileNames;
   }
 
   @Override
