@@ -15,16 +15,24 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.StreamSupport;
 
+import io.minio.Result;
+import io.minio.errors.*;
+import io.minio.messages.Item;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.client.impl.ExtendedMinioAsyncClient;
@@ -48,6 +56,8 @@ import io.minio.PutObjectArgs;
 import io.minio.http.Method;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
+import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonParseException;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonMappingException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
@@ -467,6 +477,59 @@ class FolioS3ClientTest {
         throw new UncheckedIOException(e);
       }
     });
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = { true, false })
+  void testListObjects(boolean isAwsSdk) throws IOException {
+    // Setup
+    var properties = getS3ClientProperties(isAwsSdk, endpoint);
+    var s3Client = S3ClientFactory.getS3Client(properties);
+    s3Client.createBucketIfNotExists();
+
+    // Upload some objects to the bucket
+    byte[] content = getRandomBytes(SMALL_SIZE);
+    List<String> expectedObjects = Arrays.asList("object1.txt", "object2.txt", "object3.txt");
+
+    for (String objectKey : expectedObjects) {
+      try {
+        s3Client.write(objectKey, new ByteArrayInputStream(content));
+      } catch (Exception e) {
+        throw new IOException(e);
+      }
+    }
+
+    // Call the iterableList method and handle exceptions
+    List<String> actualObjects;
+    try {
+      actualObjects = StreamSupport.stream(
+                      s3Client.iterableList("path/to/objects", 1000, null).spliterator(), false)
+              .map(result -> {
+                try {
+                  return result.get().objectName();
+                } catch (ErrorResponseException | InsufficientDataException | InternalException |
+                         InvalidKeyException | InvalidResponseException | IOException |
+                         NoSuchAlgorithmException |
+                         ServerException | XmlParserException e) {
+                  // Handle exceptions as needed
+                  // You may log or handle differently based on your application requirements
+                  e.printStackTrace();
+                  return null;
+                }
+              })
+              .filter(Objects::nonNull)
+              .collect(Collectors.toList());
+    } catch (Exception e) {
+      // Handle any other exceptions that might occur during iterableList
+      e.printStackTrace();
+      actualObjects = Collections.emptyList();
+    }
+
+    // Assertions
+    assertEquals(expectedObjects, actualObjects);
+
+    // Clean up - Remove the test objects
+    s3Client.remove(expectedObjects.toArray(new String[0]));
   }
 
   @ParameterizedTest
