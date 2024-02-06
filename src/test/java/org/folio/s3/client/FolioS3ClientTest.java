@@ -503,7 +503,7 @@ class FolioS3ClientTest {
     List<String> actualObjects;
     try {
       actualObjects = StreamSupport.stream(
-                      s3Client.iterableList("path/to/objects", 1000, null).spliterator(), false)
+                      s3Client.iterableList("", 1000, null).spliterator(), false)
               .map(result -> {
                 try {
                   return result.get().objectName();
