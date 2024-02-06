@@ -534,6 +534,56 @@ class FolioS3ClientTest {
 
   @ParameterizedTest
   @ValueSource(booleans = { true, false })
+  void testListObjectsWithStartAfter(boolean isAwsSdk) throws IOException {
+    // Setup
+    var properties = getS3ClientProperties(isAwsSdk, endpoint);
+    var s3Client = S3ClientFactory.getS3Client(properties);
+    s3Client.createBucketIfNotExists();
+
+    // Upload some objects to the bucket
+    byte[] content = getRandomBytes(SMALL_SIZE);
+    List<String> expectedObjects = Arrays.asList("object1.txt", "object2.txt", "object3.txt");
+
+    for (String objectKey : expectedObjects) {
+      try {
+        s3Client.write(objectKey, new ByteArrayInputStream(content));
+      } catch (Exception e) {
+        throw new IOException(e);
+      }
+    }
+
+    // Call the iterableList method with non-null and non-empty startAfter
+    List<String> actualObjects;
+    try {
+      String startAfterKey = "object2.txt";
+      actualObjects = new ArrayList<>();
+      for (Result<Item> result : s3Client.iterableList("", 1000, startAfterKey)) {
+        try {
+          actualObjects.add(result.get().objectName());
+        } catch (ErrorResponseException | InsufficientDataException | InternalException |
+                 InvalidKeyException | InvalidResponseException | IOException |
+                 NoSuchAlgorithmException |
+                 ServerException | XmlParserException e) {
+          // Handle exceptions as needed
+          // You may log or handle differently based on your application requirements
+          e.printStackTrace();
+        }
+      }
+    } catch (Exception e) {
+      // Handle any other exceptions that might occur during iterableList
+      e.printStackTrace();
+      actualObjects = Collections.emptyList();
+    }
+
+    // Assertions
+    assertEquals(expectedObjects.subList(2, 3), actualObjects); // Only expect the objects after startAfterKey
+
+    // Clean up - Remove the test objects
+    s3Client.remove(expectedObjects.toArray(new String[0]));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = { true, false })
   void testMultipartExceptions(boolean isAwsSdk) throws IOException {
     S3ClientProperties properties = getS3ClientProperties(isAwsSdk, endpoint);
     FolioS3Client s3Client = S3ClientFactory.getS3Client(properties);
