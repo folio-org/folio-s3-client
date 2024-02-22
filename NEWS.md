@@ -1,3 +1,11 @@
+## v2.0.7 - Released
+This release contains security vulnerability fixes in dependencies.
+
+[Full Changelog](https://github.com/folio-org/folio-s3-client/compare/v2.0.6...v2.0.7)
+
+### Bug fixes
+* [FOLS3CL-26](https://issues.folio.org/browse/FOLS3CL-26) minio 8.5.7 fixing security vulnerabilities
+
 ## v2.0.6 - Released
 This release contains fixing the vulnerabilities of AWS SDK
 
