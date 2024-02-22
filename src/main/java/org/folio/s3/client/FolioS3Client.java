@@ -1,6 +1,7 @@
 package org.folio.s3.client;
 
 import io.minio.http.Method;
+
 import java.io.InputStream;
 import java.util.List;
 
@@ -74,6 +75,14 @@ public interface FolioS3Client {
    * @return list of object paths
    */
   List<String> list(String path);
+
+  /**
+   * Get iterable list of object paths
+   *
+   * @param path - the path to the file on S3-compatible storage
+   * @return iterable list of object paths
+   */
+  List<String> list(String path, int maxKeys, String startAfter);
 
   /**
    * Returns size of the object on S3 storage

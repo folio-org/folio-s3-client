@@ -3,7 +3,6 @@ package org.folio.s3.client;
 import static io.minio.ObjectWriteArgs.MAX_PART_SIZE;
 import static io.minio.ObjectWriteArgs.MIN_MULTIPART_SIZE;
 
-import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
@@ -18,24 +17,26 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import io.minio.GetPresignedObjectUrlArgs;
-import io.minio.http.Method;
-import org.apache.commons.lang3.StringUtils;
-import org.folio.s3.client.impl.ExtendedMinioAsyncClient;
-import org.folio.s3.exception.S3ClientException;
-
-import com.google.common.collect.ImmutableMultimap;
-
 import io.minio.BucketExistsArgs;
 import io.minio.GetObjectArgs;
+import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.ListObjectsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioAsyncClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import io.minio.RemoveObjectsArgs;
+import io.minio.Result;
 import io.minio.StatObjectArgs;
 import io.minio.UploadObjectArgs;
+import io.minio.http.Method;
+import io.minio.messages.Item;
+import org.apache.commons.lang3.StringUtils;
+import org.folio.s3.client.impl.ExtendedMinioAsyncClient;
+import org.folio.s3.exception.S3ClientException;
+
+import com.google.common.collect.ImmutableMultimap;
+
 import io.minio.credentials.IamAwsProvider;
 import io.minio.credentials.Provider;
 import io.minio.credentials.StaticProvider;
@@ -282,6 +283,34 @@ public class MinioS3Client implements FolioS3Client {
     } catch (Exception e) {
       throw new S3ClientException("Error getting list of objects for path: " + path, e);
     }
+  }
+
+  @Override
+  public List<String> list(String path, int maxKeys, String startAfter) {
+    List<String> fileNames = new ArrayList<>();
+
+    ListObjectsArgs.Builder listObjectsArgsBuilder = ListObjectsArgs.builder()
+            .bucket(this.bucket)
+            .region(this.region)
+            .prefix(path)
+            .maxKeys(maxKeys);
+
+    if (startAfter != null && !startAfter.isEmpty()) {
+      listObjectsArgsBuilder.startAfter(startAfter);
+    }
+
+    try {
+      Iterable<Result<Item>> results = this.client.listObjects(listObjectsArgsBuilder.build());
+
+      for (Result<Item> result : results) {
+        Item item = result.get();
+        fileNames.add(item.objectName());
+      }
+    } catch (Exception e) {
+      throw new S3ClientException("Error getting list of objects for path: " + path, e);
+    }
+
+    return fileNames;
   }
 
   @Override

@@ -18,13 +18,13 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.IntStream;
-
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.client.impl.ExtendedMinioAsyncClient;
@@ -467,6 +467,81 @@ class FolioS3ClientTest {
         throw new UncheckedIOException(e);
       }
     });
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = { true, false })
+  void testListObjects(boolean isAwsSdk) throws IOException {
+    // Setup
+    var properties = getS3ClientProperties(isAwsSdk, endpoint);
+    var s3Client = S3ClientFactory.getS3Client(properties);
+    s3Client.createBucketIfNotExists();
+
+    // Upload some objects to the bucket
+    byte[] content = getRandomBytes(SMALL_SIZE);
+    List<String> expectedObjects = Arrays.asList("object1.txt", "object2.txt", "object3.txt");
+
+    for (String objectKey : expectedObjects) {
+      try {
+        s3Client.write(objectKey, new ByteArrayInputStream(content));
+      } catch (Exception e) {
+        throw new IOException(e);
+      }
+    }
+
+    // Call the list method and handle exceptions
+    List<String> actualObjects;
+    try {
+      actualObjects = s3Client.list("", 1000, null);
+    } catch (Exception e) {
+      // Handle any other exceptions that might occur during list
+      e.printStackTrace();
+      actualObjects = Collections.emptyList();
+    }
+
+    // Assertions
+    assertEquals(expectedObjects, actualObjects);
+
+    // Clean up - Remove the test objects
+    s3Client.remove(expectedObjects.toArray(new String[0]));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = { true, false })
+  void testListObjectsWithStartAfter(boolean isAwsSdk) throws IOException {
+    // Setup
+    var properties = getS3ClientProperties(isAwsSdk, endpoint);
+    var s3Client = S3ClientFactory.getS3Client(properties);
+    s3Client.createBucketIfNotExists();
+
+    // Upload some objects to the bucket
+    byte[] content = getRandomBytes(SMALL_SIZE);
+    List<String> expectedObjects = Arrays.asList("object1.txt", "object2.txt", "object3.txt");
+
+    for (String objectKey : expectedObjects) {
+      try {
+        s3Client.write(objectKey, new ByteArrayInputStream(content));
+      } catch (Exception e) {
+        throw new IOException(e);
+      }
+    }
+
+    // Call the list method with non-null and non-empty startAfter
+    List<String> actualObjects;
+    try {
+      String startAfterKey = "object2.txt";
+      actualObjects = s3Client.list("", 1000, startAfterKey);
+    } catch (Exception e) {
+      // Handle any other exceptions that might occur during list
+      e.printStackTrace();
+      actualObjects = Collections.emptyList();
+    }
+
+    // Assertions
+    assertEquals(expectedObjects.subList(2, 3), actualObjects); // Only expect the objects after startAfterKey
+
+    // Clean up - Remove the test objects
+    s3Client.remove(expectedObjects.toArray(new String[0]));
   }
 
   @ParameterizedTest
