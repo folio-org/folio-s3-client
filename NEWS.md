@@ -1,3 +1,16 @@
+## v2.1.0 - Released
+This release contains dependencies updates and bug fixes
+
+[Full Changelog](https://github.com/folio-org/folio-s3-client/compare/v2.0.0...v2.1.0)
+
+### Tasks
+* [FOLS3CL-20](https://issues.folio.org/browse/FOLS3CL-20) Java 17, upgrade dependencies for Poppy
+* [FOLS3CL-18](https://issues.folio.org/browse/FOLS3CL-18) folio-s3-client OOM during input stream writing
+
+### Bug fixes
+* [FOLS3CL-26](https://issues.folio.org/browse/FOLS3CL-26) minio 8.5.7 fixing security vulnerabilities
+* [FOLS3CL-23](https://issues.folio.org/browse/FOLS3CL-23) software.amazon.awssdk:s3 security vulnerabilities
+
 ## v2.0.0 - Released
 This release contains only upgrade to Java 17
 
