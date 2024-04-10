@@ -24,6 +24,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -49,6 +50,7 @@ import io.minio.http.Method;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
@@ -290,7 +292,7 @@ class FolioS3ClientTest {
     var properties = getS3ClientProperties(true, endpoint);
     AtomicBoolean aborted = new AtomicBoolean(false);
     var aws = AwsS3Client.createS3Client(properties);
-    var mock = new S3Client() {
+    var mock = new S3AsyncClient() {
       public void close() {
       }
 
@@ -298,11 +300,11 @@ class FolioS3ClientTest {
         return "serviceName";
       }
 
-      public CreateMultipartUploadResponse createMultipartUpload(CreateMultipartUploadRequest request) {
+      public CompletableFuture<CreateMultipartUploadResponse> createMultipartUpload(CreateMultipartUploadRequest request) {
         return aws.createMultipartUpload(request);
       }
 
-      public UploadPartCopyResponse uploadPartCopy(UploadPartCopyRequest request) {
+      public CompletableFuture<UploadPartCopyResponse> uploadPartCopy(UploadPartCopyRequest request) {
         return aws.uploadPartCopy(request);
       }
 
@@ -310,11 +312,10 @@ class FolioS3ClientTest {
         throw new UnsupportedOperationException("greetings from mock");
       }
 
-      public software.amazon.awssdk.services.s3.model.AbortMultipartUploadResponse abortMultipartUpload(
-          AbortMultipartUploadRequest request) {
-        aborted.set(true);
-        return aws.abortMultipartUpload(request);
-      }
+        public CompletableFuture<software.amazon.awssdk.services.s3.model.AbortMultipartUploadResponse> abortMultipartUpload(Consumer<AbortMultipartUploadRequest.Builder> abortMultipartUploadRequest) {
+            aborted.set(true);
+          return S3AsyncClient.super.abortMultipartUpload(abortMultipartUploadRequest);
+        }
     };
     var s3Client = new AwsS3Client(properties, aws);
     s3Client.createBucketIfNotExists();
