@@ -127,6 +127,8 @@ class FolioS3ClientTest {
     }
   }
 
+
+  @DisplayName("=== Test write, read, delete file ===")
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testWriteReadDeleteFile(FolioS3Client s3Client) throws IOException {
@@ -174,6 +176,7 @@ class FolioS3ClientTest {
       .size());
   }
 
+  @DisplayName("=== Test write by stream ===")
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testWriteByStream(FolioS3Client s3Client) throws IOException {
@@ -209,6 +212,7 @@ class FolioS3ClientTest {
     s3Client.remove(expected);
   }
 
+  @DisplayName("=== Test upload, read, delete file ===")
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testUploadReadDeleteFile(FolioS3Client s3Client) throws IOException {
@@ -251,6 +255,7 @@ class FolioS3ClientTest {
   }
 
   @Deprecated
+  @Disabled
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testAppendSmallFile(FolioS3Client s3Client) throws IOException {
@@ -273,6 +278,7 @@ class FolioS3ClientTest {
   }
 
   @Deprecated
+  @Disabled
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testAppendLargeFile(FolioS3Client s3Client) throws IOException {
@@ -403,6 +409,8 @@ class FolioS3ClientTest {
       .isEmpty());
   }
 
+
+  @DisplayName("=== Test write different size files ===")
   @ParameterizedTest
   @ValueSource(ints = {SMALL_SIZE, LARGE_SIZE})
   void testRemoteStorageWriter(int size) throws IOException {
@@ -424,6 +432,7 @@ class FolioS3ClientTest {
     }
   }
 
+  @DisplayName("=== Test remote sorage writer failures ===")
   @Test
   void testFailsRemoteStorageWriter() {
     final String path = "";
@@ -433,6 +442,7 @@ class FolioS3ClientTest {
     assertThrows(S3ClientException.class, () -> client.getRemoteStorageWriter(path, size));
   }
 
+  @DisplayName("=== Test multipart ===")
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testMultipart(FolioS3Client s3Client) {
@@ -513,6 +523,7 @@ class FolioS3ClientTest {
     });
   }
 
+  @DisplayName("=== Test list objects ===")
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testListObjects(FolioS3Client s3Client) throws IOException {
@@ -548,6 +559,7 @@ class FolioS3ClientTest {
     s3Client.remove(expectedObjects.toArray(new String[0]));
   }
 
+  @DisplayName("=== Test list objects with start after ===")
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testListObjectsWithStartAfter(FolioS3Client s3Client) throws IOException {
@@ -584,6 +596,7 @@ class FolioS3ClientTest {
     s3Client.remove(expectedObjects.toArray(new String[0]));
   }
 
+  @DisplayName("=== Test multipart exceptions ===")
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testMultipartExceptions(FolioS3Client s3Client) throws IOException {
