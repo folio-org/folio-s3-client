@@ -2,7 +2,6 @@ package org.folio.s3.client;
 
 import static io.minio.ObjectWriteArgs.MIN_MULTIPART_SIZE;
 import static java.lang.String.format;
-import static java.time.temporal.ChronoUnit.MINUTES;
 import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -17,7 +16,6 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -94,7 +92,7 @@ class FolioS3ClientTest {
   @BeforeAll
   public static void setUp() {
 
-    DockerImageName localstackImage = DockerImageName.parse("localstack/localstack:s3-latest");
+    DockerImageName localstackImage = DockerImageName.parse("localstack/localstack:3.3.0");
 
     localstack = new LocalStackContainer(localstackImage)
             .withServices(S3)
