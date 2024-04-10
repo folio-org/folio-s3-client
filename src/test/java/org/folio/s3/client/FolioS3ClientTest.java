@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.testcontainers.containers.localstack.LocalStackContainer.Service.S3;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -15,7 +16,6 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -38,8 +38,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
+import org.testcontainers.containers.localstack.LocalStackContainer;
 
 import com.google.common.collect.Multimap;
 
@@ -49,9 +48,9 @@ import io.minio.PutObjectArgs;
 import io.minio.http.Method;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
+import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
-import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
@@ -62,12 +61,11 @@ import software.amazon.awssdk.services.s3.model.UploadPartResponse;
 
 @Log4j2
 class FolioS3ClientTest {
-  public static final int S3_PORT = 9000;
+  private static LocalStackContainer localstack;
+  public static String region;
+  public static String accessKey;
+  public static String secretKey;
   public static final String S3_BUCKET = "test-bucket";
-  public static final String S3_REGION = "us-west-2";
-  private static GenericContainer<?> s3;
-  public static final String S3_ACCESS_KEY = "minio-access-key";
-  public static final String S3_SECRET_KEY = "minio-secret-key";
   private static final int SMALL_SIZE = 1024;
   public static final int LARGE_SIZE = MIN_MULTIPART_SIZE + 1;
 
@@ -75,22 +73,24 @@ class FolioS3ClientTest {
 
   @BeforeAll
   public static void setUp() {
-    s3 = new GenericContainer<>("minio/minio:latest").withEnv("MINIO_ACCESS_KEY", S3_ACCESS_KEY)
-      .withEnv("MINIO_SECRET_KEY", S3_SECRET_KEY)
-      .withCommand("server /data")
-      .withExposedPorts(S3_PORT)
-      .waitingFor(new HttpWaitStrategy().forPath("/minio/health/ready")
-        .forPort(S3_PORT)
-        .withStartupTimeout(Duration.ofSeconds(10)));
-    s3.start();
 
-    endpoint = format("http://%s:%s", s3.getHost(), s3.getFirstMappedPort());
+    DockerImageName localstackImage = DockerImageName.parse("localstack/localstack:latest");
 
+    localstack = new LocalStackContainer(localstackImage)
+            .withServices(S3);
+
+    accessKey = localstack.getAccessKey();
+    secretKey = localstack.getSecretKey();
+    region = localstack.getRegion();
+
+    localstack.start();
+
+    endpoint = format("http://%s:%s", localstack.getHost(), localstack.getFirstMappedPort());
   }
 
   @AfterAll
   public static void tearDown() {
-    s3.stop();
+    localstack.stop();
   }
 
   @ParameterizedTest
@@ -225,7 +225,6 @@ class FolioS3ClientTest {
   }
 
   @Deprecated
-  @Disabled
   @ParameterizedTest
   @CsvSource({ "true," + SMALL_SIZE, "true," + LARGE_SIZE, "false," + SMALL_SIZE, "false," + LARGE_SIZE })
   void testAppendFile(boolean isAwsSdk, int size) throws IOException {
@@ -606,11 +605,11 @@ class FolioS3ClientTest {
     return S3ClientProperties.builder()
       .endpoint(endpoint)
       .forcePathStyle(true)
-      .secretKey(S3_SECRET_KEY)
-      .accessKey(S3_ACCESS_KEY)
+      .secretKey(secretKey)
+      .accessKey(accessKey)
       .bucket(S3_BUCKET)
       .awsSdk(isAwsSdk)
-      .region(S3_REGION)
+      .region(region)
       .build();
   }
 
