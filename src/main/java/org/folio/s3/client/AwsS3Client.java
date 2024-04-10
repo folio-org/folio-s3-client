@@ -34,9 +34,7 @@ public class AwsS3Client extends MinioS3Client {
 
   private final S3AsyncClient client;
   private final String bucket;
-
   private static final int PART_NUMBER_ONE = 1;
-
   private static final int PART_NUMBER_TWO = 2;
 
   AwsS3Client(S3ClientProperties s3ClientProperties, S3AsyncClient client) {
