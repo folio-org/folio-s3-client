@@ -47,7 +47,10 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.localstack.LocalStackContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.utility.DockerImageName;
 
 import com.google.common.collect.Multimap;
@@ -70,6 +73,8 @@ import software.amazon.awssdk.services.s3.model.UploadPartResponse;
 
 @Log4j2
 class FolioS3ClientTest {
+  /** testcontainers logs to slf4j */
+  private static final Logger slfLog = LoggerFactory.getLogger(FolioS3ClientTest.class);
   private static LocalStackContainer localstack;
   public static String region;
   public static String accessKey;
@@ -100,6 +105,8 @@ class FolioS3ClientTest {
     region = localstack.getRegion();
 
     localstack.start();
+    localstack.followOutput(new Slf4jLogConsumer(slfLog)
+        .withSeparateOutputStreams().withPrefix("localstack"));
 
     endpoint = format("http://%s:%s", localstack.getHost(), localstack.getFirstMappedPort());
 
