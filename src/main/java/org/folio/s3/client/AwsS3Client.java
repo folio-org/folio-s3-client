@@ -19,6 +19,7 @@ import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.ChecksumAlgorithm;
 import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CompletedMultipartUpload;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
@@ -26,6 +27,7 @@ import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartCopyRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
+import software.amazon.awssdk.services.s3.multipart.MultipartConfiguration;
 import software.amazon.awssdk.transfer.s3.S3TransferManager;
 import software.amazon.awssdk.transfer.s3.model.UploadRequest;
 
@@ -79,7 +81,7 @@ public class AwsS3Client extends MinioS3Client {
       return client.putObject(PutObjectRequest.builder()
                       .bucket(bucket)
                       .key(path)
-                      .contentType("application/octet-stream")
+                      .checksumAlgorithm(ChecksumAlgorithm.SHA256)
                       .build(), AsyncRequestBody.fromBytes(is.readAllBytes()))
               .thenApply(response -> path)
               .get();
@@ -96,7 +98,7 @@ public class AwsS3Client extends MinioS3Client {
               .putObjectRequest(PutObjectRequest.builder()
                       .bucket(bucket)
                       .key(path)
-                      .contentType("application/octet-stream")
+                      .checksumAlgorithm(ChecksumAlgorithm.SHA256)
                       .build())
               .requestBody(AsyncRequestBody.fromInputStream(is, size, Executors.newCachedThreadPool()))
               .build();
