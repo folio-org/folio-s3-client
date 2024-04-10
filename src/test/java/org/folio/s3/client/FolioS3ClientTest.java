@@ -2,6 +2,7 @@ package org.folio.s3.client;
 
 import static io.minio.ObjectWriteArgs.MIN_MULTIPART_SIZE;
 import static java.lang.String.format;
+import static java.time.temporal.ChronoUnit.MINUTES;
 import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -16,6 +17,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -26,6 +28,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
+
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.client.impl.ExtendedMinioAsyncClient;
@@ -39,6 +42,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.testcontainers.containers.localstack.LocalStackContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import com.google.common.collect.Multimap;
 
@@ -48,7 +52,6 @@ import io.minio.PutObjectArgs;
 import io.minio.http.Method;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
-import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
@@ -77,6 +80,7 @@ class FolioS3ClientTest {
     DockerImageName localstackImage = DockerImageName.parse("localstack/localstack:3.3.0");
 
     localstack = new LocalStackContainer(localstackImage)
+            .withStartupTimeout(Duration.of(5, MINUTES))
             .withServices(S3);
 
     accessKey = localstack.getAccessKey();
