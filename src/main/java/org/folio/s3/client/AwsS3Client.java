@@ -79,6 +79,7 @@ public class AwsS3Client extends MinioS3Client {
       return client.putObject(PutObjectRequest.builder()
                       .bucket(bucket)
                       .key(path)
+                      .contentType("application/octet-stream")
                       .build(), AsyncRequestBody.fromBytes(is.readAllBytes()))
               .thenApply(response -> path)
               .get();
@@ -95,6 +96,7 @@ public class AwsS3Client extends MinioS3Client {
               .putObjectRequest(PutObjectRequest.builder()
                       .bucket(bucket)
                       .key(path)
+                      .contentType("application/octet-stream")
                       .build())
               .requestBody(AsyncRequestBody.fromInputStream(is, size, Executors.newCachedThreadPool()))
               .build();
