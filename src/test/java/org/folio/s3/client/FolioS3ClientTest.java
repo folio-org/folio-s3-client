@@ -92,7 +92,7 @@ class FolioS3ClientTest {
     DockerImageName localstackImage = DockerImageName.parse("localstack/localstack:3.0.0");
 
     localstack = new LocalStackContainer(localstackImage)
-            .withStartupTimeout(Duration.of(5, MINUTES))
+            .withStartupTimeout(Duration.of(10, MINUTES))
             .withServices(S3);
 
     accessKey = localstack.getAccessKey();
