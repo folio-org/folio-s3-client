@@ -128,10 +128,12 @@ class FolioS3ClientTest {
   }
 
 
-  @DisplayName("=== Test write, read, delete file ===")
+
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
+  @DisplayName("=== Test write, read, delete file ===")
   void testWriteReadDeleteFile(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testWriteReadDeleteFile: Test write, read, delete file ===");
     s3Client.createBucketIfNotExists();
     byte[] content = getRandomBytes(SMALL_SIZE);
     var original = List.of("directory_1/CSV_Data_1.csv", "directory_1/directory_2/CSV_Data_2.csv",
@@ -180,6 +182,7 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testWriteByStream(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testWriteByStream: Test write by stream ===");
     s3Client.createBucketIfNotExists();
     byte[] content = getRandomBytes(SMALL_SIZE);
     String original = "directory_1/CSV_Data_1.csv";
@@ -216,6 +219,7 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testUploadReadDeleteFile(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testUploadReadDeleteFile: Test upload, read, delete file ===");
     s3Client.createBucketIfNotExists();
     byte[] content = getRandomBytes(SMALL_SIZE);
     var fileOnStorage = "directory_1/CSV_Data_1.csv";
@@ -259,6 +263,7 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testAppendSmallFile(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testAppendSmallFile: Test append small file ===");
     s3Client.createBucketIfNotExists();
     byte[] content1 = getRandomBytes(SMALL_SIZE);
     byte[] content2 = getRandomBytes(SMALL_SIZE + 1);
@@ -282,6 +287,7 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testAppendLargeFile(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testAppendLargeFile: Test append large file ===");
     s3Client.createBucketIfNotExists();
     byte[] content1 = getRandomBytes(LARGE_SIZE);
     byte[] content2 = getRandomBytes(LARGE_SIZE + 1);
@@ -304,6 +310,7 @@ class FolioS3ClientTest {
   @Disabled
   @Test
   void testAppendAbortMinio() {
+    log.debug("=== testAppendAbortMinio: Test append abort Minio ===");
     var path = "appendAbort.txt";
     byte[] content = getRandomBytes(LARGE_SIZE);
     var properties = getS3ClientProperties(false, endpoint);
@@ -339,6 +346,7 @@ class FolioS3ClientTest {
   @Disabled
   @Test
   void testAppendAbortAws() {
+    log.debug("=== testAppendAbortAws: Test append abort AWS ===");
     var path = "appendAbort.txt";
     byte[] content = getRandomBytes(LARGE_SIZE);
     var properties = getS3ClientProperties(true, endpoint);
@@ -384,6 +392,7 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testNonExistingFileOperations(FolioS3Client s3Client) {
+    log.debug("=== testNonExistingFileOperations: Files operations on non-existing file ===");
     s3Client.createBucketIfNotExists();
     var fakeLocalPath = "/fake-local-path";
     var fakeRemotePath = "/fake-remote-path";
@@ -414,6 +423,7 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @ValueSource(ints = {SMALL_SIZE, LARGE_SIZE})
   void testRemoteStorageWriter(int size) throws IOException {
+    log.debug("=== testRemoteStorageWriter: Test write different size files ===");
     final String path = "opt-writer/test.txt";
 
     var s3Client = getMinioClient();
@@ -435,6 +445,7 @@ class FolioS3ClientTest {
   @DisplayName("=== Test remote sorage writer failures ===")
   @Test
   void testFailsRemoteStorageWriter() {
+    log.debug("=== testFailsRemoteStorageWriter: Test remote sorage writer failures ===");
     final String path = "";
     final int size = 0;
     final FolioS3Client client = getMinioClient();
@@ -446,6 +457,7 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testMultipart(FolioS3Client s3Client) {
+    log.debug("=== testMultipart: Test multipart ===");
 
     s3Client.createBucketIfNotExists();
 
@@ -527,6 +539,7 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testListObjects(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testListObjects: Test list objects ===");
     // Setup
     s3Client.createBucketIfNotExists();
 
@@ -563,6 +576,7 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testListObjectsWithStartAfter(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testListObjectsWithStartAfter: Test list objects with start after ===");
     // Setup
     s3Client.createBucketIfNotExists();
 
@@ -600,6 +614,7 @@ class FolioS3ClientTest {
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
   void testMultipartExceptions(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testMultipartExceptions: Test multipart exceptions ===");
 
     s3Client.createBucketIfNotExists();
 
