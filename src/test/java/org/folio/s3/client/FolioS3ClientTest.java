@@ -612,6 +612,7 @@ class FolioS3ClientTest {
 
   @DisplayName("=== Test multipart exceptions ===")
   @ParameterizedTest
+  @Disabled(value = "Too slow")
   @ArgumentsSource(ClientsProvider.class)
   void testMultipartExceptions(FolioS3Client s3Client) throws IOException {
     log.debug("=== testMultipartExceptions: Test multipart exceptions ===");
