@@ -25,6 +25,7 @@
     <junit.version>5.10.2</junit.version>
     <testcontainers.version>1.19.7</testcontainers.version>
     <commons-io.version>2.15.1</commons-io.version>
+    <localstack.version>1.19.7</localstack.version>
     <sonar.exclusions>
       **/src/main/java/org/folio/s3/client/S3ClientProperties.java
     </sonar.exclusions>
@@ -64,6 +65,11 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3-transfer-manager</artifactId>
+      <version>${aws.sdk.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
       <version>${junit.version}</version>
@@ -79,6 +85,12 @@
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
       <version>${testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>localstack</artifactId>
+      <version>${localstack.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
