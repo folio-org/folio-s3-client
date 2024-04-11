@@ -89,7 +89,7 @@ class FolioS3ClientTest {
   @BeforeAll
   public static void setUp() {
 
-    DockerImageName localstackImage = DockerImageName.parse("localstack/localstack:0.11.3");
+    DockerImageName localstackImage = DockerImageName.parse("localstack/localstack:latest");
 
     localstack = new LocalStackContainer(localstackImage)
             .withStartupTimeout(Duration.of(5, MINUTES))
