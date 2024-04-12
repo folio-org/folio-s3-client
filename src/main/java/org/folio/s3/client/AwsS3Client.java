@@ -1,16 +1,13 @@
 package org.folio.s3.client;
 
 import static io.minio.ObjectWriteArgs.MIN_MULTIPART_SIZE;
-import static java.nio.channels.Channels.newChannel;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 import java.io.InputStream;
 import java.io.SequenceInputStream;
 import java.net.URI;
-import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
+import java.util.concurrent.Executors;
 
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.exception.S3ClientException;
 
 import lombok.extern.log4j.Log4j2;
@@ -18,9 +15,9 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CompletedMultipartUpload;
@@ -29,18 +26,18 @@ import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartCopyRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
+import software.amazon.awssdk.transfer.s3.S3TransferManager;
+import software.amazon.awssdk.transfer.s3.model.UploadRequest;
 
 @Log4j2
 public class AwsS3Client extends MinioS3Client {
 
-  private final S3Client client;
+  private final S3AsyncClient client;
   private final String bucket;
-
   private static final int PART_NUMBER_ONE = 1;
-
   private static final int PART_NUMBER_TWO = 2;
 
-  AwsS3Client(S3ClientProperties s3ClientProperties, S3Client client) {
+  AwsS3Client(S3ClientProperties s3ClientProperties, S3AsyncClient client) {
     super(s3ClientProperties);
     this.client = client;
     bucket = s3ClientProperties.getBucket();
@@ -50,7 +47,7 @@ public class AwsS3Client extends MinioS3Client {
     this(s3ClientProperties, createS3Client(s3ClientProperties));
   }
 
-  static S3Client createS3Client(S3ClientProperties s3ClientProperties) {
+  static S3AsyncClient createS3Client(S3ClientProperties s3ClientProperties) {
     final String accessKey = s3ClientProperties.getAccessKey();
     final String endpoint = s3ClientProperties.getEndpoint();
     final String secretKey = s3ClientProperties.getSecretKey();
@@ -58,34 +55,31 @@ public class AwsS3Client extends MinioS3Client {
     final String bucket = s3ClientProperties.getBucket();
 
     log.info("Creating AWS SDK client endpoint {},region {},bucket {},accessKey {},secretKey {}.", endpoint, region, bucket,
-        StringUtils.isNotBlank(accessKey) ? "<set>" : "<not set>", StringUtils.isNotBlank(secretKey) ? "<set>" : "<not set>");
+        isNotBlank(accessKey) ? "<set>" : "<not set>", isNotBlank(secretKey) ? "<set>" : "<not set>");
 
     AwsCredentialsProvider credentialsProvider;
 
-    if (StringUtils.isNotBlank(accessKey) && StringUtils.isNotBlank(secretKey)) {
-      var awsCredentials = AwsBasicCredentials.create(accessKey, secretKey);
-      credentialsProvider = StaticCredentialsProvider.create(awsCredentials);
-    } else {
-      credentialsProvider = DefaultCredentialsProvider.create();
-    }
+    credentialsProvider = getCredentialsProvider(accessKey, secretKey);
 
-    return S3Client.builder()
-        .endpointOverride(URI.create(endpoint))
-        .forcePathStyle(s3ClientProperties.isForcePathStyle())
-        .region(Region.of(region))
-        .credentialsProvider(credentialsProvider)
-        .build();
+    return S3AsyncClient.builder()
+            .endpointOverride(URI.create(endpoint))
+            .forcePathStyle(s3ClientProperties.isForcePathStyle())
+            .region(Region.of(region))
+            .credentialsProvider(credentialsProvider)
+            .multipartEnabled(true)
+            .build();
   }
 
   @Override
   public String write(String path, InputStream is) {
     log.debug("Writing with using AWS SDK client");
     try (is) {
-       client.putObject(PutObjectRequest.builder()
-        .bucket(bucket)
-        .key(path)
-        .build(), RequestBody.fromBytes(is.readAllBytes()));
-      return path;
+      return client.putObject(PutObjectRequest.builder()
+                      .bucket(bucket)
+                      .key(path)
+                      .build(), AsyncRequestBody.fromBytes(is.readAllBytes()))
+              .thenApply(response -> path)
+              .get();
     } catch (Exception e) {
       throw new S3ClientException("Cannot write file: " + path, e);
     }
@@ -94,12 +88,17 @@ public class AwsS3Client extends MinioS3Client {
   @Override
   public String write(String path, InputStream is, long size) {
     log.debug("Writing with using AWS SDK client");
-    try (is) {
-       client.putObject(PutObjectRequest.builder()
-        .bucket(bucket)
-        .key(path)
-        .build(), RequestBody.fromInputStream(is, size));
-      return path;
+    try (is; var manager = S3TransferManager.builder().s3Client(client).build()) {
+      UploadRequest uploadRequest = UploadRequest.builder()
+              .putObjectRequest(PutObjectRequest.builder()
+                      .bucket(bucket)
+                      .key(path)
+                      .build())
+              .requestBody(AsyncRequestBody.fromInputStream(is, size, Executors.newCachedThreadPool()))
+              .build();
+      return manager.upload(uploadRequest).completionFuture()
+              .thenApply(response -> path)
+              .get();
     } catch (Exception e) {
       throw new S3ClientException("Cannot write file: " + path, e);
     }
@@ -128,7 +127,7 @@ public class AwsS3Client extends MinioS3Client {
             .key(path)
             .build();
 
-          uploadId = client.createMultipartUpload(createMultipartUploadRequest)
+          uploadId = client.createMultipartUpload(createMultipartUploadRequest).join()
             .uploadId();
 
           var uploadPartRequest1 = UploadPartCopyRequest.builder()
@@ -147,10 +146,10 @@ public class AwsS3Client extends MinioS3Client {
             .partNumber(PART_NUMBER_TWO)
             .build();
 
-          var originalEtag = client.uploadPartCopy(uploadPartRequest1)
+          var originalEtag = client.uploadPartCopy(uploadPartRequest1).join()
             .copyPartResult()
             .eTag();
-          var appendedEtag = client.uploadPart(uploadPartRequest2, RequestBody.fromInputStream(is, is.available()))
+          var appendedEtag = client.uploadPart(uploadPartRequest2, AsyncRequestBody.fromInputStream(is, (long) is.available(),Executors.newCachedThreadPool())).join()
             .eTag();
 
           var original = CompletedPart.builder()
@@ -173,7 +172,7 @@ public class AwsS3Client extends MinioS3Client {
             .multipartUpload(completedMultipartUpload)
             .build();
 
-          return client.completeMultipartUpload(completeMultipartUploadRequest)
+          return client.completeMultipartUpload(completeMultipartUploadRequest).join()
             .key();
 
         } else {
@@ -196,6 +195,15 @@ public class AwsS3Client extends MinioS3Client {
       }
       log.error("Cannot append data for path: {}", path, e);
       throw new S3ClientException("Cannot append data for path: " + path, e);
+    }
+  }
+
+  private static AwsCredentialsProvider getCredentialsProvider(String accessKey, String secretKey) {
+    if (isNotBlank(accessKey) && isNotBlank(secretKey)) {
+      var awsCredentials = AwsBasicCredentials.create(accessKey, secretKey);
+      return StaticCredentialsProvider.create(awsCredentials);
+    } else {
+      return DefaultCredentialsProvider.create();
     }
   }
 }

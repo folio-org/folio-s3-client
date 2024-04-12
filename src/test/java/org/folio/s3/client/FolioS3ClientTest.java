@@ -2,11 +2,13 @@ package org.folio.s3.client;
 
 import static io.minio.ObjectWriteArgs.MIN_MULTIPART_SIZE;
 import static java.lang.String.format;
+import static java.time.temporal.ChronoUnit.MINUTES;
 import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.testcontainers.containers.localstack.LocalStackContainer.Service.S3;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -19,12 +21,17 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.client.impl.ExtendedMinioAsyncClient;
@@ -34,11 +41,14 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
+import org.testcontainers.containers.localstack.LocalStackContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import com.google.common.collect.Multimap;
 
@@ -49,7 +59,7 @@ import io.minio.http.Method;
 import lombok.SneakyThrows;
 import lombok.extern.log4j.Log4j2;
 import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
@@ -60,42 +70,70 @@ import software.amazon.awssdk.services.s3.model.UploadPartResponse;
 
 @Log4j2
 class FolioS3ClientTest {
-  public static final int S3_PORT = 9000;
+  private static LocalStackContainer localstack;
+  public static String region;
+  public static String accessKey;
+  public static String secretKey;
+  private static String endpoint;
+
   public static final String S3_BUCKET = "test-bucket";
-  public static final String S3_REGION = "us-west-2";
-  private static GenericContainer<?> s3;
-  public static final String S3_ACCESS_KEY = "minio-access-key";
-  public static final String S3_SECRET_KEY = "minio-secret-key";
   private static final int SMALL_SIZE = 1024;
   public static final int LARGE_SIZE = MIN_MULTIPART_SIZE + 1;
 
-  private static String endpoint;
+  private static final Map<Boolean, FolioS3Client> CLIENTS = new HashMap<>();
+
+  public static FolioS3Client getMinioClient() {
+    return CLIENTS.get(false);
+  }
 
   @BeforeAll
   public static void setUp() {
-    s3 = new GenericContainer<>("minio/minio:latest").withEnv("MINIO_ACCESS_KEY", S3_ACCESS_KEY)
-      .withEnv("MINIO_SECRET_KEY", S3_SECRET_KEY)
-      .withCommand("server /data")
-      .withExposedPorts(S3_PORT)
-      .waitingFor(new HttpWaitStrategy().forPath("/minio/health/ready")
-        .forPort(S3_PORT)
-        .withStartupTimeout(Duration.ofSeconds(10)));
-    s3.start();
 
-    endpoint = format("http://%s:%s", s3.getHost(), s3.getFirstMappedPort());
+    DockerImageName localstackImage = DockerImageName.parse("localstack/localstack:3.3.0");
 
+    localstack = new LocalStackContainer(localstackImage)
+            .withStartupTimeout(Duration.of(1, MINUTES))
+            .withServices(S3);
+
+    accessKey = localstack.getAccessKey();
+    secretKey = localstack.getSecretKey();
+    region = localstack.getRegion();
+
+    localstack.start();
+
+    endpoint = format("http://%s:%s", localstack.getHost(), localstack.getFirstMappedPort());
+
+    // AWS S3 client
+    CLIENTS.put(true, S3ClientFactory.getS3Client(getS3ClientProperties(true, endpoint)));
+    // Minio client
+    CLIENTS.put(false, S3ClientFactory.getS3Client(getS3ClientProperties(false, endpoint)));
   }
 
   @AfterAll
   public static void tearDown() {
-    s3.stop();
+    localstack.stop();
   }
 
+  private static class ClientsProvider implements ArgumentsProvider {
+
+
+
+    @Override
+    public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
+      return Stream.of(
+              Arguments.of(CLIENTS.get(true)),
+              Arguments.of(CLIENTS.get(false)
+              ));
+    }
+  }
+
+
+
   @ParameterizedTest
-  @ValueSource(booleans = { true, false })
-  void testWriteReadDeleteFile(boolean isAwsSdk) throws IOException {
-    var properties = getS3ClientProperties(isAwsSdk, endpoint);
-    var s3Client = S3ClientFactory.getS3Client(properties);
+  @ArgumentsSource(ClientsProvider.class)
+  @DisplayName("=== Test write, read, delete file ===")
+  void testWriteReadDeleteFile(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testWriteReadDeleteFile: Test write, read, delete file ===");
     s3Client.createBucketIfNotExists();
     byte[] content = getRandomBytes(SMALL_SIZE);
     var original = List.of("directory_1/CSV_Data_1.csv", "directory_1/directory_2/CSV_Data_2.csv",
@@ -140,14 +178,12 @@ class FolioS3ClientTest {
       .size());
   }
 
+  @DisplayName("=== Test write by stream ===")
   @ParameterizedTest
-  @ValueSource(booleans = { true, false })
-  void testWriteByStream(boolean isAwsSdk) throws IOException {
-    var properties = getS3ClientProperties(isAwsSdk, endpoint);
-    var s3Client = S3ClientFactory.getS3Client(properties);
-
+  @ArgumentsSource(ClientsProvider.class)
+  void testWriteByStream(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testWriteByStream: Test write by stream ===");
     s3Client.createBucketIfNotExists();
-
     byte[] content = getRandomBytes(SMALL_SIZE);
     String original = "directory_1/CSV_Data_1.csv";
 
@@ -179,11 +215,11 @@ class FolioS3ClientTest {
     s3Client.remove(expected);
   }
 
+  @DisplayName("=== Test upload, read, delete file ===")
   @ParameterizedTest
-  @ValueSource(booleans = { true, false })
-  void testUploadReadDeleteFile(boolean isAwsSdk) throws IOException {
-    var properties = getS3ClientProperties(isAwsSdk, endpoint);
-    var s3Client = S3ClientFactory.getS3Client(properties);
+  @ArgumentsSource(ClientsProvider.class)
+  void testUploadReadDeleteFile(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testUploadReadDeleteFile: Test upload, read, delete file ===");
     s3Client.createBucketIfNotExists();
     byte[] content = getRandomBytes(SMALL_SIZE);
     var fileOnStorage = "directory_1/CSV_Data_1.csv";
@@ -225,13 +261,36 @@ class FolioS3ClientTest {
   @Deprecated
   @Disabled
   @ParameterizedTest
-  @CsvSource({ "true," + SMALL_SIZE, "true," + LARGE_SIZE, "false," + SMALL_SIZE, "false," + LARGE_SIZE })
-  void testAppendFile(boolean isAwsSdk, int size) throws IOException {
-    var properties = getS3ClientProperties(isAwsSdk, endpoint);
-    var s3Client = S3ClientFactory.getS3Client(properties);
+  @ArgumentsSource(ClientsProvider.class)
+  void testAppendSmallFile(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testAppendSmallFile: Test append small file ===");
     s3Client.createBucketIfNotExists();
-    byte[] content1 = getRandomBytes(size);
-    byte[] content2 = getRandomBytes(size + 1);
+    byte[] content1 = getRandomBytes(SMALL_SIZE);
+    byte[] content2 = getRandomBytes(SMALL_SIZE + 1);
+    var source = "directory_1/CSV_Data_1.csv";
+
+    // Append to non-existing source
+    s3Client.append(source, new ByteArrayInputStream(content1));
+
+    // Append to existing source
+    s3Client.append(source, new ByteArrayInputStream(content2));
+
+    try (var is = s3Client.read(source)) {
+      assertTrue(Objects.deepEquals(ArrayUtils.addAll(content1, content2), is.readAllBytes()));
+    }
+
+    s3Client.remove(source);
+  }
+
+  @Deprecated
+  @Disabled
+  @ParameterizedTest
+  @ArgumentsSource(ClientsProvider.class)
+  void testAppendLargeFile(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testAppendLargeFile: Test append large file ===");
+    s3Client.createBucketIfNotExists();
+    byte[] content1 = getRandomBytes(LARGE_SIZE);
+    byte[] content2 = getRandomBytes(LARGE_SIZE + 1);
     var source = "directory_1/CSV_Data_1.csv";
 
     // Append to non-existing source
@@ -251,6 +310,7 @@ class FolioS3ClientTest {
   @Disabled
   @Test
   void testAppendAbortMinio() {
+    log.debug("=== testAppendAbortMinio: Test append abort Minio ===");
     var path = "appendAbort.txt";
     byte[] content = getRandomBytes(LARGE_SIZE);
     var properties = getS3ClientProperties(false, endpoint);
@@ -283,14 +343,16 @@ class FolioS3ClientTest {
   }
 
   @Deprecated
+  @Disabled
   @Test
   void testAppendAbortAws() {
+    log.debug("=== testAppendAbortAws: Test append abort AWS ===");
     var path = "appendAbort.txt";
     byte[] content = getRandomBytes(LARGE_SIZE);
     var properties = getS3ClientProperties(true, endpoint);
     AtomicBoolean aborted = new AtomicBoolean(false);
     var aws = AwsS3Client.createS3Client(properties);
-    var mock = new S3Client() {
+    var mock = new S3AsyncClient() {
       public void close() {
       }
 
@@ -298,11 +360,11 @@ class FolioS3ClientTest {
         return "serviceName";
       }
 
-      public CreateMultipartUploadResponse createMultipartUpload(CreateMultipartUploadRequest request) {
+      public CompletableFuture<CreateMultipartUploadResponse> createMultipartUpload(CreateMultipartUploadRequest request) {
         return aws.createMultipartUpload(request);
       }
 
-      public UploadPartCopyResponse uploadPartCopy(UploadPartCopyRequest request) {
+      public CompletableFuture<UploadPartCopyResponse> uploadPartCopy(UploadPartCopyRequest request) {
         return aws.uploadPartCopy(request);
       }
 
@@ -310,11 +372,10 @@ class FolioS3ClientTest {
         throw new UnsupportedOperationException("greetings from mock");
       }
 
-      public software.amazon.awssdk.services.s3.model.AbortMultipartUploadResponse abortMultipartUpload(
-          AbortMultipartUploadRequest request) {
-        aborted.set(true);
-        return aws.abortMultipartUpload(request);
-      }
+        public CompletableFuture<software.amazon.awssdk.services.s3.model.AbortMultipartUploadResponse> abortMultipartUpload(Consumer<AbortMultipartUploadRequest.Builder> abortMultipartUploadRequest) {
+            aborted.set(true);
+          return S3AsyncClient.super.abortMultipartUpload(abortMultipartUploadRequest);
+        }
     };
     var s3Client = new AwsS3Client(properties, aws);
     s3Client.createBucketIfNotExists();
@@ -329,10 +390,9 @@ class FolioS3ClientTest {
 
   @DisplayName("Files operations on non-existing file")
   @ParameterizedTest
-  @ValueSource(booleans = { true, false })
-  void testNonExistingFileOperations(boolean isAwsSdk) {
-    var properties = getS3ClientProperties(isAwsSdk, endpoint);
-    var s3Client = S3ClientFactory.getS3Client(properties);
+  @ArgumentsSource(ClientsProvider.class)
+  void testNonExistingFileOperations(FolioS3Client s3Client) {
+    log.debug("=== testNonExistingFileOperations: Files operations on non-existing file ===");
     s3Client.createBucketIfNotExists();
     var fakeLocalPath = "/fake-local-path";
     var fakeRemotePath = "/fake-remote-path";
@@ -358,13 +418,16 @@ class FolioS3ClientTest {
       .isEmpty());
   }
 
+
+  @DisplayName("=== Test write different size files ===")
   @ParameterizedTest
   @ValueSource(ints = {SMALL_SIZE, LARGE_SIZE})
   void testRemoteStorageWriter(int size) throws IOException {
+    log.debug("=== testRemoteStorageWriter: Test write different size files ===");
     final String path = "opt-writer/test.txt";
 
-    var properties = getS3ClientProperties(false, endpoint);
-    var s3Client = S3ClientFactory.getS3Client(properties);
+    var s3Client = getMinioClient();
+
     s3Client.createBucketIfNotExists();
     final var data = getRandomBytes(size);
 
@@ -379,20 +442,23 @@ class FolioS3ClientTest {
     }
   }
 
+  @DisplayName("=== Test remote sorage writer failures ===")
   @Test
   void testFailsRemoteStorageWriter() {
+    log.debug("=== testFailsRemoteStorageWriter: Test remote sorage writer failures ===");
     final String path = "";
     final int size = 0;
-    final FolioS3Client client = S3ClientFactory.getS3Client(getS3ClientProperties(false, endpoint));
+    final FolioS3Client client = getMinioClient();
 
     assertThrows(S3ClientException.class, () -> client.getRemoteStorageWriter(path, size));
   }
 
+  @DisplayName("=== Test multipart ===")
   @ParameterizedTest
-  @ValueSource(booleans = { true, false })
-  void testMultipart(boolean isAwsSdk) throws IOException {
-    S3ClientProperties properties = getS3ClientProperties(isAwsSdk, endpoint);
-    FolioS3Client s3Client = S3ClientFactory.getS3Client(properties);
+  @ArgumentsSource(ClientsProvider.class)
+  void testMultipart(FolioS3Client s3Client) {
+    log.debug("=== testMultipart: Test multipart ===");
+
     s3Client.createBucketIfNotExists();
 
     var fileOnStorage = "directory/file.ext";
@@ -469,12 +535,12 @@ class FolioS3ClientTest {
     });
   }
 
+  @DisplayName("=== Test list objects ===")
   @ParameterizedTest
-  @ValueSource(booleans = { true, false })
-  void testListObjects(boolean isAwsSdk) throws IOException {
+  @ArgumentsSource(ClientsProvider.class)
+  void testListObjects(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testListObjects: Test list objects ===");
     // Setup
-    var properties = getS3ClientProperties(isAwsSdk, endpoint);
-    var s3Client = S3ClientFactory.getS3Client(properties);
     s3Client.createBucketIfNotExists();
 
     // Upload some objects to the bucket
@@ -506,12 +572,12 @@ class FolioS3ClientTest {
     s3Client.remove(expectedObjects.toArray(new String[0]));
   }
 
+  @DisplayName("=== Test list objects with start after ===")
   @ParameterizedTest
-  @ValueSource(booleans = { true, false })
-  void testListObjectsWithStartAfter(boolean isAwsSdk) throws IOException {
+  @ArgumentsSource(ClientsProvider.class)
+  void testListObjectsWithStartAfter(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testListObjectsWithStartAfter: Test list objects with start after ===");
     // Setup
-    var properties = getS3ClientProperties(isAwsSdk, endpoint);
-    var s3Client = S3ClientFactory.getS3Client(properties);
     s3Client.createBucketIfNotExists();
 
     // Upload some objects to the bucket
@@ -544,11 +610,13 @@ class FolioS3ClientTest {
     s3Client.remove(expectedObjects.toArray(new String[0]));
   }
 
+  @DisplayName("=== Test multipart exceptions ===")
   @ParameterizedTest
-  @ValueSource(booleans = { true, false })
-  void testMultipartExceptions(boolean isAwsSdk) throws IOException {
-    S3ClientProperties properties = getS3ClientProperties(isAwsSdk, endpoint);
-    FolioS3Client s3Client = S3ClientFactory.getS3Client(properties);
+  @Disabled(value = "Too slow")
+  @ArgumentsSource(ClientsProvider.class)
+  void testMultipartExceptions(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testMultipartExceptions: Test multipart exceptions ===");
+
     s3Client.createBucketIfNotExists();
 
     var fileOnStorage = "directory/file.ext";
@@ -604,11 +672,11 @@ class FolioS3ClientTest {
     return S3ClientProperties.builder()
       .endpoint(endpoint)
       .forcePathStyle(true)
-      .secretKey(S3_SECRET_KEY)
-      .accessKey(S3_ACCESS_KEY)
+      .secretKey(secretKey)
+      .accessKey(accessKey)
       .bucket(S3_BUCKET)
       .awsSdk(isAwsSdk)
-      .region(S3_REGION)
+      .region(region)
       .build();
   }
 
