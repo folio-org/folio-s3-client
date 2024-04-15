@@ -1,3 +1,14 @@
+## v2.1.1 - Released
+This release contains dependencies updates and bug fixes
+
+This release contains dependencies updates.
+
+[Full Changelog](https://github.com/folio-org/folio-s3-client/compare/v2.1.0...v2.1.1)
+
+### Bug fixes
+* [FOLS3CL-29](https://folio-org.atlassian.net/browse/FOLS3CL-29) Upgrade dependencies for Quesnelia (minio, commons-compress, …)
+* [FOLS3CL-31](https://folio-org.atlassian.net/browse/FOLS3CL-21) AWS S3: writing limitation
+
 ## v2.1.0 - Released
 This release contains dependencies updates and bug fixes
 
