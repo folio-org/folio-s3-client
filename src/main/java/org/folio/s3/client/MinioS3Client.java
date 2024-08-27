@@ -2,6 +2,9 @@ package org.folio.s3.client;
 
 import static io.minio.ObjectWriteArgs.MAX_PART_SIZE;
 import static io.minio.ObjectWriteArgs.MIN_MULTIPART_SIZE;
+import static org.apache.commons.lang3.StringUtils.EMPTY;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.apache.commons.lang3.StringUtils.replaceOnce;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -14,7 +17,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import io.minio.BucketExistsArgs;
@@ -57,10 +59,12 @@ public class MinioS3Client implements FolioS3Client {
   private final ExtendedMinioAsyncClient client;
   private final String bucket;
   private final String region;
+  protected final String subPath;
 
   MinioS3Client(S3ClientProperties properties, ExtendedMinioAsyncClient client) {
     region = properties.getRegion();
     bucket = properties.getBucket();
+    subPath = properties.getSubPath();
     this.client = client;
   }
 
@@ -126,7 +130,7 @@ public class MinioS3Client implements FolioS3Client {
       return client.uploadObject(UploadObjectArgs.builder()
         .bucket(bucket)
         .region(region)
-        .object(filename)
+        .object(addSubPathIfPresent(filename))
         .headers(headers)
         .filename(path)
         .build())
@@ -203,14 +207,15 @@ public class MinioS3Client implements FolioS3Client {
   public String write(String path, InputStream is) {
     log.debug("Writing with using Minio client");
     try (is) {
-      return client.putObject(PutObjectArgs.builder()
+      var obj = client.putObject(PutObjectArgs.builder()
         .bucket(bucket)
         .region(region)
-        .object(path)
+        .object(addSubPathIfPresent(path))
         .stream(is, -1, MIN_MULTIPART_SIZE)
         .build())
         .get()
         .object();
+      return removeSubPathIfPresent(obj);
     } catch (Exception e) {
       throw new S3ClientException("Cannot write stream: " + path, e);
     }
@@ -227,7 +232,7 @@ public class MinioS3Client implements FolioS3Client {
       client.removeObject(RemoveObjectArgs.builder()
         .bucket(bucket)
         .region(region)
-        .object(path)
+        .object(addSubPathIfPresent(path))
         .build())
         .get();
       return path;
@@ -244,8 +249,9 @@ public class MinioS3Client implements FolioS3Client {
         .bucket(bucket)
         .region(region)
         .objects(Arrays.stream(paths)
+          .map(this::addSubPathIfPresent)
           .map(DeleteObject::new)
-          .collect(Collectors.toList()))
+          .toList())
         .build())
         .iterator();
 
@@ -253,7 +259,7 @@ public class MinioS3Client implements FolioS3Client {
         throw new S3ClientException("Error deleting");
       }
 
-      return Arrays.asList(paths);
+      return Arrays.stream(paths).map(this::addSubPathIfPresent).toList();
 
     } catch (Exception e) {
       throw new S3ClientException("Error deleting file: ", e);
@@ -267,14 +273,13 @@ public class MinioS3Client implements FolioS3Client {
       client.listObjects(ListObjectsArgs.builder()
         .bucket(bucket)
         .region(region)
-        .prefix(path)
+        .prefix(addSubPathIfPresent(path))
         .maxKeys(1)
         .build())
         .iterator()
         .forEachRemaining(itemResult -> {
           try {
-            list.add(itemResult.get()
-              .objectName());
+            list.add(removeSubPathIfPresent(itemResult.get().objectName()));
           } catch (Exception e) {
             throw new S3ClientException("Error populating list of objects for path: " + path, e);
           }
@@ -292,11 +297,11 @@ public class MinioS3Client implements FolioS3Client {
     ListObjectsArgs.Builder listObjectsArgsBuilder = ListObjectsArgs.builder()
             .bucket(this.bucket)
             .region(this.region)
-            .prefix(path)
+            .prefix(addSubPathIfPresent(path))
             .maxKeys(maxKeys);
 
     if (startAfter != null && !startAfter.isEmpty()) {
-      listObjectsArgsBuilder.startAfter(startAfter);
+      listObjectsArgsBuilder.startAfter(addSubPathIfPresent(startAfter));
     }
 
     try {
@@ -304,7 +309,7 @@ public class MinioS3Client implements FolioS3Client {
 
       for (Result<Item> result : results) {
         Item item = result.get();
-        fileNames.add(item.objectName());
+        fileNames.add(removeSubPathIfPresent(item.objectName()));
       }
     } catch (Exception e) {
       throw new S3ClientException("Error getting list of objects for path: " + path, e);
@@ -319,7 +324,7 @@ public class MinioS3Client implements FolioS3Client {
      return client.getObject(GetObjectArgs.builder()
         .bucket(bucket)
         .region(region)
-        .object(path)
+        .object(addSubPathIfPresent(path))
         .build())
         .get();
     } catch (Exception e) {
@@ -333,7 +338,7 @@ public class MinioS3Client implements FolioS3Client {
       return client.statObject(StatObjectArgs.builder()
         .bucket(bucket)
         .region(region)
-        .object(path)
+        .object(addSubPathIfPresent(path))
         .build())
         .get()
         .size();
@@ -357,7 +362,7 @@ public class MinioS3Client implements FolioS3Client {
     try {
       return client.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
         .bucket(bucket)
-        .object(path)
+        .object(addSubPathIfPresent(path))
         .method(method)
         .expiry(EXPIRATION_TIME_IN_MINUTES, TimeUnit.MINUTES)
         .build());
@@ -372,7 +377,7 @@ public class MinioS3Client implements FolioS3Client {
   @Override
   public String initiateMultipartUpload(String path) {
     try {
-      return client.createMultipartUploadAsync(bucket, region, path, null, null)
+      return client.createMultipartUploadAsync(bucket, region, addSubPathIfPresent(path), null, null)
         .get()
         .result()
         .uploadId();
@@ -390,7 +395,7 @@ public class MinioS3Client implements FolioS3Client {
     try {
       return client.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
         .bucket(bucket)
-        .object(path)
+        .object(addSubPathIfPresent(path))
         .method(Method.PUT)
         .expiry(EXPIRATION_TIME_IN_MINUTES, TimeUnit.MINUTES)
         .extraQueryParams(Map.of(PARAM_MULTIPART_PART_NUMBER, String.valueOf(partNumber), PARAM_MULTIPART_UPLOAD_ID, uploadId))
@@ -416,7 +421,7 @@ public class MinioS3Client implements FolioS3Client {
           PutObjectArgs.builder()
             .bucket(bucket)
             .region(region)
-            .object(path)
+            .object(addSubPathIfPresent(path))
             .stream(stream, -1, MAX_PART_SIZE)
             .extraQueryParams(Map.of(PARAM_MULTIPART_UPLOAD_ID, uploadId, PARAM_MULTIPART_PART_NUMBER, String.valueOf(partNumber)))
             .build()
@@ -437,7 +442,7 @@ public class MinioS3Client implements FolioS3Client {
     String uploadId
   ) {
     try {
-       client.abortMultipartUploadAsync(bucket, region, path, uploadId, null, null).get();
+       client.abortMultipartUploadAsync(bucket, region, addSubPathIfPresent(path), uploadId, null, null).get();
     } catch (Exception e) {
       throw new S3ClientException(
         "Error getting presigned url for upload ID: " + uploadId,
@@ -456,7 +461,7 @@ public class MinioS3Client implements FolioS3Client {
       client.completeMultipartUploadAsync(
         bucket,
         region,
-        path,
+        addSubPathIfPresent(path),
         uploadId,
         IntStream.range(0, partETags.size())
           .mapToObj(i -> new Part(i + 1, partETags.get(i)))
@@ -470,5 +475,13 @@ public class MinioS3Client implements FolioS3Client {
         e
       );
     }
+  }
+
+  protected String addSubPathIfPresent(String path) {
+    return isEmpty(subPath) ? path : String.format("%s/%s", subPath, path);
+  }
+
+  protected String removeSubPathIfPresent(String path) {
+    return isEmpty(subPath) ? path : replaceOnce(path, subPath + "/", EMPTY);
   }
 }
