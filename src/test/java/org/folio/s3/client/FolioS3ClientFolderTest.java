@@ -1,0 +1,477 @@
+package org.folio.s3.client;
+
+import static io.minio.ObjectWriteArgs.MIN_MULTIPART_SIZE;
+import static java.lang.String.format;
+import static java.time.temporal.ChronoUnit.MINUTES;
+import static java.util.stream.Collectors.toList;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.testcontainers.containers.localstack.LocalStackContainer.Service.S3;
+
+import io.minio.http.Method;
+import lombok.extern.log4j.Log4j2;
+import org.folio.s3.exception.S3ClientException;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.testcontainers.containers.localstack.LocalStackContainer;
+import org.testcontainers.utility.DockerImageName;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
+@Log4j2
+class FolioS3ClientSubPathTest {
+  private static LocalStackContainer localstack;
+  public static String region;
+  public static String accessKey;
+  public static String secretKey;
+  private static String endpoint;
+
+  public static final String S3_BUCKET = "test-bucket";
+  public static final String SUB_PATH_FOLDER = "test-folder";
+  private static final int SMALL_SIZE = 1024;
+  public static final int LARGE_SIZE = MIN_MULTIPART_SIZE + 1;
+
+  private static final Map<Boolean, FolioS3Client> CLIENTS = new HashMap<>();
+
+  public static FolioS3Client getMinioClient() {
+    return CLIENTS.get(false);
+  }
+
+  @BeforeAll
+  public static void setUp() {
+
+    DockerImageName localstackImage = DockerImageName.parse("localstack/localstack:3.3.0");
+
+    localstack = new LocalStackContainer(localstackImage)
+            .withStartupTimeout(Duration.of(1, MINUTES))
+            .withServices(S3);
+
+    accessKey = localstack.getAccessKey();
+    secretKey = localstack.getSecretKey();
+    region = localstack.getRegion();
+
+    localstack.start();
+
+    endpoint = format("http://%s:%s", localstack.getHost(), localstack.getFirstMappedPort());
+
+    // AWS S3 client
+    CLIENTS.put(true, S3ClientFactory.getS3Client(getS3ClientProperties(true, endpoint)));
+    // Minio client
+    CLIENTS.put(false, S3ClientFactory.getS3Client(getS3ClientProperties(false, endpoint)));
+  }
+
+  @AfterAll
+  public static void tearDown() {
+    localstack.stop();
+  }
+
+  private static class ClientsProvider implements ArgumentsProvider {
+
+
+
+    @Override
+    public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
+      return Stream.of(
+              Arguments.of(CLIENTS.get(true)),
+              Arguments.of(CLIENTS.get(false)
+              ));
+    }
+  }
+
+
+
+  @ParameterizedTest
+  @ArgumentsSource(ClientsProvider.class)
+  @DisplayName("=== Test write, read, delete file ===")
+  void testWriteReadDeleteFile(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testWriteReadDeleteFile: Test write, read, delete file ===");
+    s3Client.createBucketIfNotExists();
+    byte[] content = getRandomBytes(SMALL_SIZE);
+    var original = List.of("directory_1/CSV_Data_1.csv", "directory_1/directory_2/CSV_Data_2.csv",
+        "directory_1/directory_2/directory_3/CSV_Data_3.csv");
+
+    // Write files content
+    List<String> expected;
+    try {
+      expected = original.stream()
+        .map(p -> s3Client.write(p, new ByteArrayInputStream(content)))
+        .collect(toList());
+    } catch (Exception e) {
+      throw new IOException(e);
+    }
+
+    assertTrue(Objects.deepEquals(original, expected));
+
+    assertTrue(
+        Objects.deepEquals(s3Client.list("directory_1/"), List.of("directory_1/CSV_Data_1.csv", "directory_1/directory_2/")));
+
+    assertTrue(Objects.deepEquals(s3Client.list("directory_1/directory_2/"),
+        List.of("directory_1/directory_2/CSV_Data_2.csv", "directory_1/directory_2/directory_3/")));
+
+    // Read files content
+    original.forEach(p -> {
+      try (var is = s3Client.read(p)) {
+        assertTrue(Objects.deepEquals(content, is.readAllBytes()));
+        var link = s3Client.getPresignedUrl(p);
+        assertNotNull(link);
+        assertTrue(link.contains(p));
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    });
+
+
+    // Remove files files
+    String[] paths = new String[original.size()];
+    original.toArray(paths);
+    s3Client.remove(paths);
+    assertEquals(0, s3Client.list("directory_1/")
+      .size());
+  }
+
+  @DisplayName("=== Test write by stream ===")
+  @ParameterizedTest
+  @ArgumentsSource(ClientsProvider.class)
+  void testWriteByStream(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testWriteByStream: Test write by stream ===");
+    s3Client.createBucketIfNotExists();
+    byte[] content = getRandomBytes(SMALL_SIZE);
+    String original = "directory_1/CSV_Data_1.csv";
+
+    // Write file content
+    String expected;
+    try {
+      InputStream is = new ByteArrayInputStream(content);
+      expected = s3Client.write(original, is, is.available());
+    } catch (Exception e) {
+      throw new IOException(e);
+    }
+
+    assertEquals(original, expected);
+
+    assertTrue(
+        Objects.deepEquals(s3Client.list("directory_1/"), List.of("directory_1/CSV_Data_1.csv")));
+
+    // Read file content
+    try (var is = s3Client.read(expected)) {
+      assertTrue(Objects.deepEquals(content, is.readAllBytes()));
+      var link = s3Client.getPresignedUrl(expected);
+      assertNotNull(link);
+      assertTrue(link.contains(expected));
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    // Remove file
+    s3Client.remove(expected);
+  }
+
+  @DisplayName("=== Test upload, read, delete file ===")
+  @ParameterizedTest
+  @ArgumentsSource(ClientsProvider.class)
+  void testUploadReadDeleteFile(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testUploadReadDeleteFile: Test upload, read, delete file ===");
+    s3Client.createBucketIfNotExists();
+    byte[] content = getRandomBytes(SMALL_SIZE);
+    var fileOnStorage = "directory_1/CSV_Data_1.csv";
+
+    var tempFileName = "content.csv";
+    var tempFilePath = Paths.get(tempFileName);
+
+    Files.deleteIfExists(tempFilePath);
+    Files.createFile(tempFilePath);
+    Files.write(tempFilePath, content);
+
+    var link = s3Client.getPresignedUrl(fileOnStorage, Method.PUT);
+    assertNotNull(link);
+    assertTrue(link.contains(fileOnStorage));
+
+    // Upload files content
+    s3Client.upload(tempFilePath.toString(), fileOnStorage);
+
+    assertEquals(1, s3Client.list("directory_1/")
+      .size());
+    assertEquals("directory_1/CSV_Data_1.csv", s3Client.list("directory_1/")
+      .get(0));
+
+    // Read files content
+    try (var is = s3Client.read(fileOnStorage)) {
+      assertTrue(Objects.deepEquals(content, is.readAllBytes()));
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    // Remove files files
+    s3Client.remove(fileOnStorage);
+    assertEquals("[]", s3Client.list("directory_1/")
+      .toString());
+
+    Files.deleteIfExists(tempFilePath);
+  }
+
+  @DisplayName("Files operations on non-existing file")
+  @ParameterizedTest
+  @ArgumentsSource(ClientsProvider.class)
+  void testNonExistingFileOperations(FolioS3Client s3Client) {
+    log.debug("=== testNonExistingFileOperations: Files operations on non-existing file ===");
+    s3Client.createBucketIfNotExists();
+    var fakeLocalPath = "fake-local-path";
+    var fakeRemotePath = "fake-remote-path";
+    // upload
+    assertThrows(S3ClientException.class, () -> s3Client.upload(fakeLocalPath, fakeLocalPath));
+
+    // write
+    assertThrows(S3ClientException.class, () -> s3Client.write(fakeLocalPath, null));
+
+    // remove
+    assertTrue(s3Client.remove(new String[0])
+      .isEmpty());
+
+    // read
+    assertThrows(S3ClientException.class, () -> s3Client.read(fakeRemotePath));
+
+    // list
+    assertTrue(s3Client.list(fakeRemotePath)
+      .isEmpty());
+  }
+
+
+  @DisplayName("=== Test write different size files ===")
+  @ParameterizedTest
+  @ValueSource(ints = {SMALL_SIZE, LARGE_SIZE})
+  void testRemoteStorageWriter(int size) throws IOException {
+    log.debug("=== testRemoteStorageWriter: Test write different size files ===");
+    final String path = "opt-writer/test.txt";
+
+    var s3Client = getMinioClient();
+
+    s3Client.createBucketIfNotExists();
+    final var data = getRandomBytes(size);
+
+    try (final var writer = s3Client.getRemoteStorageWriter(path, 5 * SMALL_SIZE)) {
+      writer.write(new String(data));
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+
+    try (var is = s3Client.read(path)) {
+      assertTrue(Objects.deepEquals(new String(data), new String(is.readAllBytes())));
+    }
+  }
+
+  @DisplayName("=== Test remote sorage writer failures ===")
+  @Test
+  void testFailsRemoteStorageWriter() {
+    log.debug("=== testFailsRemoteStorageWriter: Test remote sorage writer failures ===");
+    final String path = "";
+    final int size = 0;
+    final FolioS3Client client = getMinioClient();
+
+    assertThrows(S3ClientException.class, () -> client.getRemoteStorageWriter(path, size));
+  }
+
+  @DisplayName("=== Test multipart ===")
+  @ParameterizedTest
+  @ArgumentsSource(ClientsProvider.class)
+  void testMultipart(FolioS3Client s3Client) {
+    log.debug("=== testMultipart: Test multipart ===");
+
+    s3Client.createBucketIfNotExists();
+
+    var fileOnStorage = "directory/file.ext";
+
+    List<byte[]> contents = Arrays.asList(
+        getRandomBytes(LARGE_SIZE),
+        getRandomBytes(LARGE_SIZE),
+        getRandomBytes(SMALL_SIZE));
+    List<Path> tempFilePaths = Arrays.asList(
+        Paths.get("part1"),
+        Paths.get("part2"),
+        Paths.get("part3"));
+
+    IntStream.range(0, 3).forEach(i -> {
+      try {
+        Files.deleteIfExists(tempFilePaths.get(i));
+        Files.createFile(tempFilePaths.get(i));
+        Files.write(tempFilePaths.get(i), contents.get(i));
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    });
+
+    // start upload
+    String uploadId = s3Client.initiateMultipartUpload(fileOnStorage);
+    assertNotNull(uploadId);
+
+    List<String> eTags = IntStream.rangeClosed(1, 3).mapToObj(i -> {
+      // get presigned URLs
+      String link = s3Client.getPresignedMultipartUploadUrl(fileOnStorage, uploadId, i);
+      assertNotNull(link);
+      assertTrue(link.contains("partNumber=" + i));
+      assertTrue(link.contains(fileOnStorage));
+
+      // upload it (normal way)
+      String eTag = s3Client.uploadMultipartPart(
+          fileOnStorage,
+          uploadId,
+          i,
+          tempFilePaths.get(i - 1).toString());
+      assertNotNull(eTag);
+      return eTag;
+    }).collect(toList());
+
+    // complete upload
+    s3Client.completeMultipartUpload(fileOnStorage, uploadId, eTags);
+
+    // too late to abort
+    assertThrows(S3ClientException.class, () -> s3Client.abortMultipartUpload(fileOnStorage, uploadId));
+
+    assertEquals(1, s3Client.list("directory/").size());
+    assertEquals("directory/file.ext", s3Client.list("directory/").get(0));
+
+    // Read files content
+    try (InputStream is = s3Client.read(fileOnStorage)) {
+      byte[] fromS3 = is.readAllBytes();
+      assertTrue(Objects.deepEquals(contents.get(0), Arrays.copyOfRange(fromS3, 0, LARGE_SIZE)));
+      assertTrue(Objects.deepEquals(contents.get(1), Arrays.copyOfRange(fromS3, LARGE_SIZE, LARGE_SIZE * 2)));
+      assertTrue(Objects.deepEquals(contents.get(2), Arrays.copyOfRange(fromS3, LARGE_SIZE * 2, LARGE_SIZE * 2 + SMALL_SIZE)));
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    // Remove files files
+    s3Client.remove(fileOnStorage);
+    assertEquals("[]", s3Client.list(SUB_PATH_FOLDER + "directory/").toString());
+
+    tempFilePaths.forEach(path -> {
+      try {
+        Files.deleteIfExists(path);
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    });
+  }
+
+  @DisplayName("=== Test list objects ===")
+  @ParameterizedTest
+  @ArgumentsSource(ClientsProvider.class)
+  void testListObjects(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testListObjects: Test list objects ===");
+    // Setup
+    s3Client.createBucketIfNotExists();
+
+    // Upload some objects to the bucket
+    byte[] content = getRandomBytes(SMALL_SIZE);
+    List<String> objects = Arrays.asList("object1.txt", "object2.txt", "object3.txt");
+    List<String> expectedObjects = Arrays.asList("object1.txt", "object2.txt", "object3.txt");
+
+    for (String objectKey : objects) {
+      try {
+        s3Client.write(objectKey, new ByteArrayInputStream(content));
+      } catch (Exception e) {
+        throw new IOException(e);
+      }
+    }
+
+    // Call the list method and handle exceptions
+    List<String> actualObjects;
+    try {
+      actualObjects = s3Client.list("", 1000, null);
+    } catch (Exception e) {
+      // Handle any other exceptions that might occur during list
+      e.printStackTrace();
+      actualObjects = Collections.emptyList();
+    }
+
+    // Assertions
+    assertEquals(expectedObjects, actualObjects);
+
+    // Clean up - Remove the test objects
+    s3Client.remove(expectedObjects.toArray(new String[0]));
+  }
+
+  @DisplayName("=== Test list objects with start after ===")
+  @ParameterizedTest
+  @ArgumentsSource(ClientsProvider.class)
+  void testListObjectsWithStartAfter(FolioS3Client s3Client) throws IOException {
+    log.debug("=== testListObjectsWithStartAfter: Test list objects with start after ===");
+    // Setup
+    s3Client.createBucketIfNotExists();
+
+    // Upload some objects to the bucket
+    byte[] content = getRandomBytes(SMALL_SIZE);
+    List<String> expectedObjects = Arrays.asList("object1.txt", "object2.txt", "object3.txt");
+
+    for (String objectKey : expectedObjects) {
+      try {
+        s3Client.write(objectKey, new ByteArrayInputStream(content));
+      } catch (Exception e) {
+        throw new IOException(e);
+      }
+    }
+
+    // Call the list method with non-null and non-empty startAfter
+    List<String> actualObjects;
+    try {
+      String startAfterKey = "object2.txt";
+      actualObjects = s3Client.list("", 1000, startAfterKey);
+    } catch (Exception e) {
+      // Handle any other exceptions that might occur during list
+      e.printStackTrace();
+      actualObjects = Collections.emptyList();
+    }
+
+    // Assertions
+    assertEquals(expectedObjects.subList(2, 3), actualObjects); // Only expect the objects after startAfterKey
+
+    // Clean up - Remove the test objects
+    s3Client.remove(expectedObjects.toArray(new String[0]));
+  }
+
+  // TODO: delete isAwsSdk in the future because of AWS S3 will be unsupported
+  public static S3ClientProperties getS3ClientProperties(boolean isAwsSdk, String endpoint) {
+    return S3ClientProperties.builder()
+      .endpoint(endpoint)
+      .forcePathStyle(true)
+      .secretKey(secretKey)
+      .accessKey(accessKey)
+      .bucket(S3_BUCKET)
+      .subPath(SUB_PATH_FOLDER)
+      .awsSdk(isAwsSdk)
+      .region(region)
+      .build();
+  }
+
+  public static byte[] getRandomBytes(int size) {
+    var original = new byte[size];
+    ThreadLocalRandom.current()
+      .nextBytes(original);
+    return original;
+  }
+}

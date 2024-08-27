@@ -23,6 +23,11 @@ public class S3ClientProperties {
   private String bucket;
 
   /**
+   * The object storage subfolder.
+   */
+  private String subPath;
+
+  /**
    * The credentials for access to object storage - accessKey.
    */
   private String accessKey;
