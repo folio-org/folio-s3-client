@@ -1,3 +1,12 @@
+## v2.2.0 - Released
+This release contains improvement client configuration
+
+### Tasks
+* [FOLS3CL-33](https://issues.folio.org/browse/FOLS3CL-33) Add subPath functionality to folio S3 client
+* [FOLS3CL-32](https://issues.folio.org/browse/FOLS3CL-32) Unit tests improvements
+
+[Full Changelog](https://github.com/folio-org/folio-s3-client/compare/v2.1.1...v2.2.0)
+
 ## v2.1.1 - Released
 This release contains dependencies updates and bug fixes
 
