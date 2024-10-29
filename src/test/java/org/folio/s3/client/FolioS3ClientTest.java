@@ -93,6 +93,7 @@ class FolioS3ClientTest {
 
     localstack = new LocalStackContainer(localstackImage)
             .withStartupTimeout(Duration.of(1, MINUTES))
+            .withCommand("--security-opt seccomp=unconfined")
             .withServices(S3);
 
     accessKey = localstack.getAccessKey();
