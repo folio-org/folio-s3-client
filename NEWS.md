@@ -1,3 +1,11 @@
+## v2.2.1 - Released
+This release contains upgrade minio and aws sdk
+
+### Stories
+* [FOLS3CL-37](https://issues.folio.org/browse/FOLS3CL-37) Upgrade minio and aws sdk for Ramsons
+
+[Full Changelog](https://github.com/folio-org/folio-s3-client/compare/v2.2.0...v2.2.1)
+
 ## v2.2.0 - Released
 This release contains improvement client configuration
 
