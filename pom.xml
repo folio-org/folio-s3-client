@@ -19,9 +19,9 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <lombok.version>1.18.30</lombok.version>
     <apache.commons.lang3.version>3.14.0</apache.commons.lang3.version>
-    <minio.version>8.5.9</minio.version>
+    <minio.version>8.5.13</minio.version>
     <log4j.version>2.23.1</log4j.version>
-    <aws.sdk.version>2.25.12</aws.sdk.version>
+    <aws.sdk.version>2.29.6</aws.sdk.version>
     <junit.version>5.10.2</junit.version>
     <testcontainers.version>1.19.7</testcontainers.version>
     <commons-io.version>2.15.1</commons-io.version>
