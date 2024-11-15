@@ -1,5 +1,5 @@
 ## v2.2.1 - Released
-This release contains improvement client configuration
+This release contains upgrade minio and aws sdk
 
 ### Stories
 * [FOLS3CL-37](https://issues.folio.org/browse/FOLS3CL-37) Upgrade minio and aws sdk for Ramsons
