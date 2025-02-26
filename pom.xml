@@ -20,15 +20,15 @@
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <lombok.version>1.18.30</lombok.version>
-    <apache.commons.lang3.version>3.14.0</apache.commons.lang3.version>
-    <minio.version>8.5.13</minio.version>
+    <lombok.version>1.18.36</lombok.version>
+    <apache.commons.lang3.version>3.17.0</apache.commons.lang3.version>
+    <minio.version>8.5.17</minio.version>
     <log4j.version>2.23.1</log4j.version>
     <aws.sdk.version>2.29.6</aws.sdk.version>
-    <junit.version>5.10.2</junit.version>
-    <testcontainers.version>1.19.7</testcontainers.version>
-    <commons-io.version>2.15.1</commons-io.version>
-    <localstack.version>1.19.7</localstack.version>
+    <junit.version>5.12.0</junit.version>
+    <testcontainers.version>1.20.5</testcontainers.version>
+    <commons-io.version>2.18.0</commons-io.version>
+    <localstack.version>1.20.5</localstack.version>
     <sonar.exclusions>
       **/src/main/java/org/folio/s3/client/S3ClientProperties.java
     </sonar.exclusions>
@@ -105,6 +105,15 @@
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>versions-maven-plugin</artifactId>
         <version>2.16.1</version>
+        <executions>
+          <execution>
+            <id>display-dependency</id>
+            <phase>package</phase>
+            <goals>
+              <goal>display-dependency-updates</goal>
+            </goals>
+          </execution>
+        </executions>
         <configuration>
           <generateBackupPoms>false</generateBackupPoms>
         </configuration>
