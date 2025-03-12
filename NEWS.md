@@ -1,3 +1,11 @@
+## v2.3.0 - Released
+This release contains upgrade to Java 21 and dependencies upgrading
+
+### Stories
+* [FOLS3CL-38](https://issues.folio.org/browse/FOLS3CL-38) Update to folio-s3-client Java 21
+
+[Full Changelog](https://github.com/folio-org/folio-s3-client/compare/v2.2.1...v2.3.0)
+
 ## v2.2.1 - Released
 This release contains upgrade minio and aws sdk
 
