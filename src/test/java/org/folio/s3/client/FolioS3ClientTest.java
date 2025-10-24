@@ -221,9 +221,9 @@ class FolioS3ClientTest {
       s3Client.createBucketIfNotExists();
 
       List<byte[]> sourceContents = Arrays.asList(
-        getRandomBytes(MIN_MULTIPART_SIZE),
-        getRandomBytes(MIN_MULTIPART_SIZE),
-        getRandomBytes(MIN_MULTIPART_SIZE)
+        getRandomBytes(LARGE_SIZE),
+        getRandomBytes(LARGE_SIZE),
+        getRandomBytes(LARGE_SIZE)
       );
 
       // add test files
@@ -242,7 +242,7 @@ class FolioS3ClientTest {
         sourceContents.get(2)
       );
 
-      assertEquals(expectedContents, actualContents);
+      assertTrue(Objects.deepEquals(actualContents, expectedContents), "composed contents did not meet expectations");
 
       // cleanup
       s3Client.remove(sourceObjects.toArray(s -> new String[s]));
