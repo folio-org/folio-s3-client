@@ -85,6 +85,14 @@ public interface FolioS3Client {
   List<String> list(String path, int maxKeys, String startAfter);
 
   /**
+   * Get recursive list of object paths (walk replacement for BaseFileStorage)
+   *
+   * @param path - the path to walk on S3-compatible storage
+   * @return list of all object paths recursively under the given path
+   */
+  List<String> walk(String path);
+
+  /**
    * Returns size of the object on S3 storage
    *
    * @param path - the path to the file on S3-compatible storage
@@ -102,6 +110,16 @@ public interface FolioS3Client {
   RemoteStorageWriter getRemoteStorageWriter(String path, int size);
 
   /**
+   * Returns RemoteStorageWriter of the S3Client with subPath support
+   *
+   * @param path - the path to the temp file that will be used for FileWriter
+   * @param size - output-buffer size of FileWriter
+   * @param subPath - optional subPath to be used for the file location
+   * @return RemoteStorageWriter instance
+   */
+  RemoteStorageWriter getRemoteStorageWriter(String path, int size, String subPath);
+
+  /**
    * Returns presigned GET url for object on S3-compatible storage
    *
    * @param path - the path to the file on S3-compatible storage
@@ -117,6 +135,16 @@ public interface FolioS3Client {
    * @return presigned url of object
    */
   String getPresignedUrl(String path, Method method);
+
+  /**
+   * Returns presigned url for object on S3-compatible storage with custom expiration
+   *
+   * @param path   - the path to the file on S3-compatible storage
+   * @param method - http method
+   * @param expirationMinutes - expiration time in minutes
+   * @return presigned url of object
+   */
+  String getPresignedUrl(String path, Method method, int expirationMinutes);
 
   /**
    * Creates bucket. Bucket name should be declared in {@link S3ClientProperties}
@@ -193,4 +221,13 @@ public interface FolioS3Client {
       String path,
       String uploadId,
       List<String> partETags);
+
+  /**
+   * Create a new object by composing (concatenating) multiple existing objects
+   *
+   * @param targetPath - the path where the composed object will be stored
+   * @param sourceKeys - list of existing object keys to compose from
+   * @return the path to the composed object
+   */
+  String compose(String targetPath, List<String> sourceKeys);
 }

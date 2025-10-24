@@ -18,11 +18,17 @@ public class RemoteStorageWriter extends StringWriter {
   private final String path;
   private final BufferedWriter writer;
   private final FolioS3Client s3Client;
+  private final String subPath;
 
   public RemoteStorageWriter(String path, int size, FolioS3Client s3Client) {
+    this(path, size, s3Client, null);
+  }
+
+  public RemoteStorageWriter(String path, int size, FolioS3Client s3Client, String subPath) {
     try {
       this.s3Client = s3Client;
       this.path = path;
+      this.subPath = subPath;
 
       this.tmp = Files.createTempFile(FilenameUtils.getName(path), FilenameUtils.getExtension(path))
         .toFile();
@@ -51,7 +57,8 @@ public class RemoteStorageWriter extends StringWriter {
     try {
       if (tmp.exists()) {
         writer.close();
-        s3Client.write(path, FileUtils.openInputStream(tmp));
+        String finalPath = subPath != null ? String.format("%s/%s", subPath, path) : path;
+        s3Client.write(finalPath, FileUtils.openInputStream(tmp));
       }
     } catch (Exception ex) {
       throw new S3ClientException("Error while close(): " + ex.getMessage());

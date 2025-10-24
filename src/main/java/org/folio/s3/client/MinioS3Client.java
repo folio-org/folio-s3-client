@@ -319,6 +319,30 @@ public class MinioS3Client implements FolioS3Client {
   }
 
   @Override
+  public List<String> walk(String path) {
+    List<String> allFiles = new ArrayList<>();
+    try {
+      client.listObjects(ListObjectsArgs.builder()
+        .bucket(bucket)
+        .region(region)
+        .prefix(addSubPathIfPresent(path))
+        .recursive(true)
+        .build())
+        .iterator()
+        .forEachRemaining(itemResult -> {
+          try {
+            allFiles.add(removeSubPathIfPresent(itemResult.get().objectName()));
+          } catch (Exception e) {
+            throw new S3ClientException("Error populating recursive list of objects for path: " + path, e);
+          }
+        });
+      return allFiles;
+    } catch (Exception e) {
+      throw new S3ClientException("Error getting recursive list of objects for path: " + path, e);
+    }
+  }
+
+  @Override
   public InputStream read(String path) {
     try {
      return client.getObject(GetObjectArgs.builder()
@@ -353,22 +377,32 @@ public class MinioS3Client implements FolioS3Client {
   }
 
   @Override
+  public RemoteStorageWriter getRemoteStorageWriter(String path, int size, String subPath) {
+    return new RemoteStorageWriter(path, size, this, subPath);
+  }
+
+  @Override
   public String getPresignedUrl(String path) {
     return getPresignedUrl(path, Method.GET);
   }
 
   @Override
   public String getPresignedUrl(String path, Method method) {
+    return getPresignedUrl(path, method, EXPIRATION_TIME_IN_MINUTES);
+  }
+
+  @Override
+  public String getPresignedUrl(String path, Method method, int expirationMinutes) {
     try {
       return client.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
         .bucket(bucket)
         .object(addSubPathIfPresent(path))
         .method(method)
-        .expiry(EXPIRATION_TIME_IN_MINUTES, TimeUnit.MINUTES)
+        .expiry(expirationMinutes, TimeUnit.MINUTES)
         .build());
     } catch (Exception e) {
       throw new S3ClientException(
-        "Error getting presigned url for object: " + path + ", method: " + method,
+        "Error getting presigned url for object: " + path + ", method: " + method + ", expiration: " + expirationMinutes + " minutes",
         e
       );
     }
@@ -474,6 +508,37 @@ public class MinioS3Client implements FolioS3Client {
         "Error getting presigned url for upload ID: " + uploadId,
         e
       );
+    }
+  }
+
+  @Override
+  public String compose(String targetPath, List<String> sourceKeys) {
+    if (sourceKeys == null || sourceKeys.isEmpty()) {
+      throw new S3ClientException("Source keys list cannot be null or empty");
+    }
+    
+    try {
+      // Read all source objects and combine them
+      List<InputStream> inputStreams = new ArrayList<>();
+      
+      for (String sourceKey : sourceKeys) {
+        InputStream sourceStream = read(sourceKey);
+        inputStreams.add(sourceStream);
+      }
+      
+      // Create a sequence input stream to concatenate all inputs
+      InputStream combinedStream = inputStreams.get(0);
+      for (int i = 1; i < inputStreams.size(); i++) {
+        combinedStream = new SequenceInputStream(combinedStream, inputStreams.get(i));
+      }
+      
+      // Write the combined stream to the target path
+      write(targetPath, combinedStream);
+      
+      return targetPath;
+      
+    } catch (Exception e) {
+      throw new S3ClientException("Error composing objects from sources: " + sourceKeys + " to target: " + targetPath, e);
     }
   }
 
