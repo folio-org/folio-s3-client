@@ -4,6 +4,7 @@ import io.minio.http.Method;
 
 import java.io.InputStream;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public interface FolioS3Client {
   /**
@@ -77,6 +78,14 @@ public interface FolioS3Client {
   List<String> list(String path);
 
   /**
+   * Get list of object paths, recursively
+   *
+   * @param path - the path to the file on S3-compatible storage
+   * @return list of object paths
+   */
+  List<String> listRecursive(String path);
+
+  /**
    * Get iterable list of object paths
    *
    * @param path - the path to the file on S3-compatible storage
@@ -117,6 +126,17 @@ public interface FolioS3Client {
    * @return presigned url of object
    */
   String getPresignedUrl(String path, Method method);
+
+  /**
+   * Returns presigned url for object on S3-compatible storage with custom expiry
+   *
+   * @param path       - the path to the file on S3-compatible storage
+   * @param method     - http method
+   * @param expiryTime - expiry time
+   * @param expiryUnit - expiry time unit
+   * @return presigned url of object
+   */
+  String getPresignedUrl(String path, Method method, int expiryTime, TimeUnit expiryUnit);
 
   /**
    * Creates bucket. Bucket name should be declared in {@link S3ClientProperties}
