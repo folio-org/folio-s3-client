@@ -1,7 +1,7 @@
 ## v2.4.0 - In Progress
 
 ### Stories
-* [FOLS3CL-40](https://folio-org.atlassian.net/browse/FOLS3CL-40) Add compose, listRecursive, custom presigned expiry
+* [FOLS3CL-40](https://folio-org.atlassian.net/browse/FOLS3CL-40) Add compose, listRecursive, custom presigned expiry, and support for content type/disposition
 
 ## v2.3.1 - Released
 This release contains security fixes for minio library
