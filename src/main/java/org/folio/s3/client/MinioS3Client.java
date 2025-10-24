@@ -228,6 +228,7 @@ public class MinioS3Client implements FolioS3Client {
     return write(path, is);
   }
 
+  @Override
   public String compose(String destination, List<String> sourceKeys) {
     try {
       return client.composeObject(ComposeObjectArgs.builder()

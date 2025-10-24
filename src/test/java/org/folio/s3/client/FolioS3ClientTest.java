@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.S3;
 
 import java.io.ByteArrayInputStream;
@@ -116,19 +117,14 @@ class FolioS3ClientTest {
   }
 
   private static class ClientsProvider implements ArgumentsProvider {
-
-
-
     @Override
     public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
       return Stream.of(
-              Arguments.of(CLIENTS.get(true)),
-              Arguments.of(CLIENTS.get(false)
-              ));
+        Arguments.of(CLIENTS.get(true)),
+        Arguments.of(CLIENTS.get(false)
+      ));
     }
   }
-
-
 
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
@@ -214,6 +210,37 @@ class FolioS3ClientTest {
 
     // Remove file
     s3Client.remove(expected);
+  }
+
+  @DisplayName("=== Test compose ===")
+  @ParameterizedTest
+  @ArgumentsSource(ClientsProvider.class)
+  void testCompose(FolioS3Client s3Client) {
+    try {
+      log.debug("=== testCompose: Test compose keys ===");
+      s3Client.createBucketIfNotExists();
+
+      // add test files
+      List<String> sourceObjects = Arrays.asList("test/object1.txt", "test/object2.txt", "test/object3.txt");
+      s3Client.write(sourceObjects.get(0), new ByteArrayInputStream("a".getBytes()));
+      s3Client.write(sourceObjects.get(1), new ByteArrayInputStream("b".getBytes()));
+      s3Client.write(sourceObjects.get(2), new ByteArrayInputStream("c".getBytes()));
+
+      String targetObject = "test/combined-object.txt";
+
+      s3Client.compose(targetObject, sourceObjects);
+
+      byte[] actualContents = s3Client.read("test/combined-object.txt").readAllBytes();
+      byte[] expectedContents = "abc".getBytes();
+
+      assertEquals(expectedContents, actualContents);
+
+      // cleanup
+      s3Client.remove(sourceObjects.toArray(s -> new String[s]));
+      s3Client.remove(targetObject);
+    } catch (Exception e) {
+      fail(e);
+    }
   }
 
   @DisplayName("=== Test upload, read, delete file ===")
@@ -571,6 +598,30 @@ class FolioS3ClientTest {
 
     // Clean up - Remove the test objects
     s3Client.remove(expectedObjects.toArray(new String[0]));
+  }
+
+  @DisplayName("=== Test list objects recursively ===")
+  @ParameterizedTest
+  @ArgumentsSource(ClientsProvider.class)
+  void testListObjectsRecursively(FolioS3Client s3Client) throws IOException {
+    try {
+      log.debug("=== testListObjectsRecursively: Test list objects recursively ===");
+      s3Client.createBucketIfNotExists();
+
+      // add test files
+      List<String> expectedObjects = Arrays.asList("test/object1.txt", "test/object2.txt", "test/object3.txt");
+
+      expectedObjects.forEach(k -> s3Client.write(k, new ByteArrayInputStream(getRandomBytes(SMALL_SIZE))));
+
+      List<String> actualObjects = s3Client.listRecursive("");
+
+      assertEquals(expectedObjects, actualObjects);
+
+      // cleanup
+      s3Client.remove(expectedObjects.toArray(s -> new String[s]));
+    } catch (Exception e) {
+      fail(e);
+    }
   }
 
   @DisplayName("=== Test list objects with start after ===")

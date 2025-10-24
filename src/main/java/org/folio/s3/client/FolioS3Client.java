@@ -45,6 +45,15 @@ public interface FolioS3Client {
   String write(String path, InputStream is, long size);
 
   /**
+   * Composes multiple objects into a single object.
+   *
+   * @param destination the destination object key
+   * @param sourceKeys the list of source object keys to compose
+   * @return the newly created composed object key
+   */
+  String compose(String destination, List<String> sourceKeys);
+
+  /**
    * Removes a file on S3 storage
    *
    * @param path the path to the file to delete
