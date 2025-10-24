@@ -87,15 +87,31 @@ public class AwsS3Client extends MinioS3Client {
 
   @Override
   public String write(String path, InputStream is, long size) {
+    return write(path, is, size, null);
+  }
+
+  @Override
+  public String write(String path, InputStream is, long size, PutObjectAdditionalOptions extraOptions) {
     log.debug("Writing with using AWS SDK client");
     try (is; var manager = S3TransferManager.builder().s3Client(client).build()) {
+      PutObjectRequest.Builder putObjectRequestBuilder = PutObjectRequest.builder()
+              .bucket(bucket)
+              .key(addSubPathIfPresent(path));
+
+      if (extraOptions != null) {
+        if (extraOptions.getContentDisposition() != null) {
+          putObjectRequestBuilder.contentDisposition(extraOptions.getContentDisposition());
+        }
+        if (extraOptions.getContentType() != null) {
+          putObjectRequestBuilder.contentType(extraOptions.getContentType());
+        }
+      }
+
       UploadRequest uploadRequest = UploadRequest.builder()
-              .putObjectRequest(PutObjectRequest.builder()
-                      .bucket(bucket)
-                      .key(addSubPathIfPresent(path))
-                      .build())
+              .putObjectRequest(putObjectRequestBuilder.build())
               .requestBody(AsyncRequestBody.fromInputStream(is, size, Executors.newCachedThreadPool()))
               .build();
+
       return manager.upload(uploadRequest).completionFuture()
               .thenApply(response -> path)
               .get();
