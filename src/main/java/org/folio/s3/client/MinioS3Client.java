@@ -170,17 +170,17 @@ public class MinioS3Client implements FolioS3Client {
         return write(path, composed);
       }
 
-      var multipart = client.createMultipartUploadAsync(bucket, region, path, null, null)
+      var multipart = client.createMultipartUploadAsync(bucket, region, addSubPathIfPresent(path), null, null)
         .get()
         .result();
       uploadId = multipart.uploadId();
-      var source = URLEncoder.encode(bucket + "/" + path, StandardCharsets.UTF_8);
+      var source = URLEncoder.encode(bucket + "/" + addSubPathIfPresent(path), StandardCharsets.UTF_8);
       var header = ImmutableMultimap.of("x-amz-copy-source", source);
-      var part1 = client.uploadPartCopyAsync(bucket, region, path, uploadId, 1, header, null);
+      var part1 = client.uploadPartCopyAsync(bucket, region, addSubPathIfPresent(path), uploadId, 1, header, null);
       var part2 = client.putObject(PutObjectArgs.builder()
         .bucket(bucket)
         .region(region)
-        .object(path)
+        .object(addSubPathIfPresent(path))
         .stream(is, -1, MAX_PART_SIZE)
         .extraQueryParams(Map.of(PARAM_MULTIPART_UPLOAD_ID, uploadId, PARAM_MULTIPART_PART_NUMBER, "2"))
         .build());
@@ -189,13 +189,13 @@ public class MinioS3Client implements FolioS3Client {
         .etag()), new Part(2,
             part2.get()
               .etag()) };
-      var result = client.completeMultipartUploadAsync(bucket, region, path, uploadId, parts, null, null)
+      var result = client.completeMultipartUploadAsync(bucket, region, addSubPathIfPresent(path), uploadId, parts, null, null)
         .get();
       return result.object();
     } catch (Exception e) {
       if (uploadId != null) {
         try {
-          client.abortMultipartUploadAsync(bucket, region, path, uploadId, null, null);
+          client.abortMultipartUploadAsync(bucket, region, addSubPathIfPresent(path), uploadId, null, null);
         } catch (Exception e2) {
           // ignore, because it is most likely the same as e (eg. network problem)
         }
