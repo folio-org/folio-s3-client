@@ -140,7 +140,7 @@ public class AwsS3Client extends MinioS3Client {
 
           var createMultipartUploadRequest = CreateMultipartUploadRequest.builder()
             .bucket(bucket)
-            .key(path)
+            .key(addSubPathIfPresent(path))
             .build();
 
           uploadId = client.createMultipartUpload(createMultipartUploadRequest).join()
@@ -148,16 +148,16 @@ public class AwsS3Client extends MinioS3Client {
 
           var uploadPartRequest1 = UploadPartCopyRequest.builder()
             .sourceBucket(bucket)
-            .sourceKey(path)
+            .sourceKey(addSubPathIfPresent(path))
             .uploadId(uploadId)
             .destinationBucket(bucket)
-            .destinationKey(path)
+            .destinationKey(addSubPathIfPresent(path))
             .partNumber(PART_NUMBER_ONE)
             .build();
 
           var uploadPartRequest2 = UploadPartRequest.builder()
             .bucket(bucket)
-            .key(path)
+            .key(addSubPathIfPresent(path))
             .uploadId(uploadId)
             .partNumber(PART_NUMBER_TWO)
             .build();
@@ -183,7 +183,7 @@ public class AwsS3Client extends MinioS3Client {
 
           var completeMultipartUploadRequest = CompleteMultipartUploadRequest.builder()
             .bucket(bucket)
-            .key(path)
+            .key(addSubPathIfPresent(path))
             .uploadId(uploadId)
             .multipartUpload(completedMultipartUpload)
             .build();
@@ -202,7 +202,7 @@ public class AwsS3Client extends MinioS3Client {
         try {
           client.abortMultipartUpload(AbortMultipartUploadRequest.builder()
               .bucket(bucket)
-              .key(path)
+              .key(addSubPathIfPresent(path))
               .uploadId(uploadId)
               .build());
         } catch (Exception e2) {
