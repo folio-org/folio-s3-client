@@ -518,7 +518,6 @@ public class MinioS3Client implements FolioS3Client {
     }
     
     try {
-      // Read all source objects and combine them
       List<InputStream> inputStreams = new ArrayList<>();
       
       for (String sourceKey : sourceKeys) {
@@ -526,13 +525,11 @@ public class MinioS3Client implements FolioS3Client {
         inputStreams.add(sourceStream);
       }
       
-      // Create a sequence input stream to concatenate all inputs
       InputStream combinedStream = inputStreams.get(0);
       for (int i = 1; i < inputStreams.size(); i++) {
         combinedStream = new SequenceInputStream(combinedStream, inputStreams.get(i));
       }
       
-      // Write the combined stream to the target path
       write(targetPath, combinedStream);
       
       return targetPath;
