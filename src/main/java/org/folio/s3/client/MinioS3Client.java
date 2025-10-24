@@ -207,16 +207,30 @@ public class MinioS3Client implements FolioS3Client {
 
   @Override
   public String write(String path, InputStream is) {
+    // size is not implemented in minio client
+    return write(path, is, 0L, PutObjectAdditionalOptions.builder().build());
+  }
+
+  @Override
+  public String write(String path, InputStream is, long size) {
+    // size is not implemented in minio client
+    return write(path, is, 0L, PutObjectAdditionalOptions.builder().build());
+  }
+
+  @Override
+  public String write(String path, InputStream is, long size, PutObjectAdditionalOptions extraOptions) {
     log.debug("Writing with using Minio client");
     try (is) {
-      var obj = client.putObject(PutObjectArgs.builder()
+      String obj = client.putObject(PutObjectArgs.builder()
         .bucket(bucket)
         .region(region)
         .object(addSubPathIfPresent(path))
         .stream(is, -1, MIN_MULTIPART_SIZE)
+        .extraHeaders(PutObjectAdditionalOptions.toMinioHeaders(extraOptions))
         .build())
         .get()
         .object();
+
       return removeSubPathIfPresent(obj);
     } catch (Exception e) {
       throw new S3ClientException("Cannot write stream: " + path, e);
@@ -224,12 +238,12 @@ public class MinioS3Client implements FolioS3Client {
   }
 
   @Override
-  public String write(String path, InputStream is, long size) {
-    return write(path, is);
+  public String compose(String destination, List<String> sourceKeys) {
+    return compose(destination, sourceKeys, null);
   }
 
   @Override
-  public String compose(String destination, List<String> sourceKeys) {
+  public String compose(String destination, List<String> sourceKeys, PutObjectAdditionalOptions extraOptions) {
     try {
       return client.composeObject(ComposeObjectArgs.builder()
         .bucket(bucket)
@@ -243,6 +257,7 @@ public class MinioS3Client implements FolioS3Client {
             .object(k)
             .build())
           .toList())
+        .extraHeaders(PutObjectAdditionalOptions.toMinioHeaders(extraOptions))
         .build())
         .get()
         .object();
