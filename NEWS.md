@@ -1,3 +1,8 @@
+## v2.4.0 - In Progress
+
+### Stories
+* [FOLS3CL-40](https://folio-org.atlassian.net/browse/FOLS3CL-40) Add compose, listRecursive, custom presigned expiry
+
 ## v2.3.0 - Released
 This release contains upgrade to Java 21 and dependencies upgrading
 

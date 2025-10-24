@@ -65,7 +65,6 @@ class FolioS3ClientSubPathTest {
 
   @BeforeAll
   public static void setUp() {
-
     DockerImageName localstackImage = DockerImageName.parse("localstack/localstack:s3-latest");
 
     localstack = new LocalStackContainer(localstackImage)
@@ -92,19 +91,14 @@ class FolioS3ClientSubPathTest {
   }
 
   private static class ClientsProvider implements ArgumentsProvider {
-
-
-
     @Override
     public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
       return Stream.of(
-              Arguments.of(CLIENTS.get(true)),
-              Arguments.of(CLIENTS.get(false)
-              ));
+        Arguments.of(CLIENTS.get(true)),
+        Arguments.of(CLIENTS.get(false)
+      ));
     }
   }
-
-
 
   @ParameterizedTest
   @ArgumentsSource(ClientsProvider.class)
@@ -145,7 +139,6 @@ class FolioS3ClientSubPathTest {
         throw new RuntimeException(e);
       }
     });
-
 
     // Remove files files
     String[] paths = new String[original.size()];
