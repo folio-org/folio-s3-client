@@ -45,7 +45,8 @@ public interface FolioS3Client {
   String write(String path, InputStream is, long size);
 
   /**
-   * Composes multiple objects into a single object.
+   * Composes multiple objects into a single object. Note that each object
+   * except the last must be at least 5MB (minimum multipart part size)
    *
    * @param destination the destination object key
    * @param sourceKeys the list of source object keys to compose

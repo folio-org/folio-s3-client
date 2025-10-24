@@ -220,18 +220,27 @@ class FolioS3ClientTest {
       log.debug("=== testCompose: Test compose keys ===");
       s3Client.createBucketIfNotExists();
 
+      List<byte[]> sourceContents = Arrays.asList(
+        getRandomBytes(MIN_MULTIPART_SIZE),
+        getRandomBytes(MIN_MULTIPART_SIZE),
+        getRandomBytes(MIN_MULTIPART_SIZE)
+      );
+
       // add test files
       List<String> sourceObjects = Arrays.asList("test/object1.txt", "test/object2.txt", "test/object3.txt");
-      s3Client.write(sourceObjects.get(0), new ByteArrayInputStream("a".getBytes()));
-      s3Client.write(sourceObjects.get(1), new ByteArrayInputStream("b".getBytes()));
-      s3Client.write(sourceObjects.get(2), new ByteArrayInputStream("c".getBytes()));
+      s3Client.write(sourceObjects.get(0), new ByteArrayInputStream(sourceContents.get(0)));
+      s3Client.write(sourceObjects.get(1), new ByteArrayInputStream(sourceContents.get(1)));
+      s3Client.write(sourceObjects.get(2), new ByteArrayInputStream(sourceContents.get(2)));
 
       String targetObject = "test/combined-object.txt";
 
       s3Client.compose(targetObject, sourceObjects);
 
       byte[] actualContents = s3Client.read("test/combined-object.txt").readAllBytes();
-      byte[] expectedContents = "abc".getBytes();
+      byte[] expectedContents = ArrayUtils.addAll(
+        ArrayUtils.addAll(sourceContents.get(0), sourceContents.get(1)),
+        sourceContents.get(2)
+      );
 
       assertEquals(expectedContents, actualContents);
 
