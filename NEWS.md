@@ -1,8 +1,9 @@
-## v2.4.0 - In Progress
+## v3.0.0 - In Progress
 
 ### Stories
+* **BREAKING** [FOLS3CL-40](https://folio-org.atlassian.net/browse/FOLS3CL-40) Consistently remove subPaths from returned paths in write, remove, and append operations across both Minio and AWS S3 clients
+* **BREAKING** [FOLS3CL-40](https://folio-org.atlassian.net/browse/FOLS3CL-40) Add subPath to parameters when appending
 * [FOLS3CL-40](https://folio-org.atlassian.net/browse/FOLS3CL-40) Add compose, listRecursive, custom presigned expiry, and support for content type/disposition
-* [FOLS3CL-40](https://folio-org.atlassian.net/browse/FOLS3CL-40) Support subPath for append usage
 
 ## v2.3.1 - Released
 This release contains security fixes for minio library
