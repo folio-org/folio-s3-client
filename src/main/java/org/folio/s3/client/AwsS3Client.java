@@ -74,12 +74,12 @@ public class AwsS3Client extends MinioS3Client {
   public String write(String path, InputStream is) {
     log.debug("Writing with using AWS SDK client");
     try (is) {
-      return client.putObject(PutObjectRequest.builder()
+      return removeSubPathIfPresent(client.putObject(PutObjectRequest.builder()
                       .bucket(bucket)
                       .key(addSubPathIfPresent(path))
                       .build(), AsyncRequestBody.fromBytes(is.readAllBytes()))
               .thenApply(response -> path)
-              .get();
+              .get());
     } catch (Exception e) {
       throw new S3ClientException("Cannot write file: " + path, e);
     }
@@ -112,9 +112,9 @@ public class AwsS3Client extends MinioS3Client {
               .requestBody(AsyncRequestBody.fromInputStream(is, size, Executors.newCachedThreadPool()))
               .build();
 
-      return manager.upload(uploadRequest).completionFuture()
+      return removeSubPathIfPresent(manager.upload(uploadRequest).completionFuture()
               .thenApply(response -> path)
-              .get();
+              .get());
     } catch (Exception e) {
       throw new S3ClientException("Cannot write file: " + path, e);
     }
@@ -188,9 +188,8 @@ public class AwsS3Client extends MinioS3Client {
             .multipartUpload(completedMultipartUpload)
             .build();
 
-          return client.completeMultipartUpload(completeMultipartUploadRequest).join()
-            .key();
-
+          return removeSubPathIfPresent(client.completeMultipartUpload(completeMultipartUploadRequest).join()
+            .key());
         } else {
           var original = read(path);
           var composed = new SequenceInputStream(original, is);
