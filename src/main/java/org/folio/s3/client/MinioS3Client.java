@@ -191,7 +191,7 @@ public class MinioS3Client implements FolioS3Client {
               .etag()) };
       var result = client.completeMultipartUploadAsync(bucket, region, addSubPathIfPresent(path), uploadId, parts, null, null)
         .get();
-      return result.object();
+      return removeSubPathIfPresent(result.object());
     } catch (Exception e) {
       if (uploadId != null) {
         try {
@@ -245,7 +245,7 @@ public class MinioS3Client implements FolioS3Client {
   @Override
   public String compose(String destination, List<String> sourceKeys, PutObjectAdditionalOptions extraOptions) {
     try {
-      return client.composeObject(ComposeObjectArgs.builder()
+      String obj = client.composeObject(ComposeObjectArgs.builder()
         .bucket(bucket)
         .region(region)
         .object(addSubPathIfPresent(destination))
@@ -261,6 +261,8 @@ public class MinioS3Client implements FolioS3Client {
         .build())
         .get()
         .object();
+
+      return removeSubPathIfPresent(obj);
     } catch (Exception e) {
       throw new S3ClientException("Error composing sources=[%s] into %s".formatted(sourceKeys.stream()
         .collect(Collectors.joining(",")), destination), e);
@@ -276,6 +278,7 @@ public class MinioS3Client implements FolioS3Client {
         .object(addSubPathIfPresent(path))
         .build())
         .get();
+
       return path;
     } catch (Exception e) {
       throw new S3ClientException("Error deleting file: ", e);
@@ -285,7 +288,6 @@ public class MinioS3Client implements FolioS3Client {
   @Override
   public List<String> remove(String... paths) {
     try {
-
       var errors = client.removeObjects(RemoveObjectsArgs.builder()
         .bucket(bucket)
         .region(region)
@@ -300,8 +302,7 @@ public class MinioS3Client implements FolioS3Client {
         throw new S3ClientException("Error deleting");
       }
 
-      return Arrays.stream(paths).map(this::addSubPathIfPresent).toList();
-
+      return Arrays.stream(paths).toList();
     } catch (Exception e) {
       throw new S3ClientException("Error deleting file: ", e);
     }
