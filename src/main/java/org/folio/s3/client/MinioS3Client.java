@@ -518,10 +518,14 @@ public class MinioS3Client implements FolioS3Client {
   }
 
   protected String addSubPathIfPresent(String path) {
-    return isEmpty(subPath) ? path : String.format("%s/%s", subPath, path);
+    return fixPathWithIncorrectSymbols(isEmpty(subPath) ? path : String.format("%s/%s", subPath, path));
   }
 
   protected String removeSubPathIfPresent(String path) {
     return isEmpty(subPath) ? path : replaceOnce(path, subPath + "/", EMPTY);
+  }
+
+  protected String fixPathWithIncorrectSymbols(String path) {
+    return path.replace("//", "/");
   }
 }
