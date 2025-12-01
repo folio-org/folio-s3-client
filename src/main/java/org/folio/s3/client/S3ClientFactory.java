@@ -1,5 +1,6 @@
 package org.folio.s3.client;
 
+/** Factory to return {@link FolioS3Client} implementation. */
 public class S3ClientFactory {
 
   private S3ClientFactory() {}

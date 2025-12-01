@@ -45,10 +45,17 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.client.impl.ExtendedMinioAsyncClient;
 import org.folio.s3.exception.S3ClientException;
 
+/**
+ * FOLIO S3 client implementation for MinIO-based S3-compatible storage.
+ *
+ * <p>This client provides basic object storage operations such as upload, download, listing,
+ * deletion, multipart uploads, and presigned URL generation. It wraps {@link
+ * ExtendedMinioAsyncClient} and exposes a {@link FolioS3Client} interface suitable for use within
+ * FOLIO modules. 2142: we wrap and rethrow InterruptedException as S3ClientException 2221: we want
+ * to catch the exceptions from the minio client, but the list is long, so we simply specify
+ * `Exception` for simplicity
+ */
 @Log4j2
-// 2142: we wrap and rethrow InterruptedException as S3ClientException
-// 2221: we want to catch the exceptions from the minio client, but the list is long,
-//         so we simply specify `Exception` for simplicity
 @SuppressWarnings({"java:S2142", "java:S2221"})
 public class MinioS3Client implements FolioS3Client {
 
@@ -67,10 +74,22 @@ public class MinioS3Client implements FolioS3Client {
     this.client = client;
   }
 
+  /**
+   * Creates a new {@link MinioS3Client} instance using the given S3 client properties.
+   *
+   * @param properties configuration properties for connecting to the S3-compatible storage
+   */
   public MinioS3Client(S3ClientProperties properties) {
     this(properties, createClient(properties));
   }
 
+  /**
+   * Creates and configures an {@link ExtendedMinioAsyncClient} instance based on the given
+   * properties.
+   *
+   * @param properties configuration properties containing endpoint, credentials, bucket and region
+   * @return configured {@link ExtendedMinioAsyncClient} instance
+   */
   static ExtendedMinioAsyncClient createClient(S3ClientProperties properties) {
     final String accessKey = properties.getAccessKey();
     final String secretKey = properties.getSecretKey();
@@ -102,6 +121,12 @@ public class MinioS3Client implements FolioS3Client {
     return ExtendedMinioAsyncClient.build(builder);
   }
 
+  /**
+   * Creates the bucket configured for this client if it does not already exist.
+   *
+   * <p>If the bucket name is blank, the method does nothing. Any errors from the underlying MinIO
+   * client are wrapped and rethrown as {@link S3ClientException}.
+   */
   public void createBucketIfNotExists() {
     try {
       if (StringUtils.isBlank(bucket)) {
@@ -467,6 +492,15 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
+  /**
+   * Generates a presigned URL for uploading a single part in a multipart upload.
+   *
+   * @param path the object key in the S3-compatible storage
+   * @param uploadId multipart upload identifier obtained from {@link
+   *     #initiateMultipartUpload(String)}
+   * @param partNumber number of the part to be uploaded
+   * @return presigned URL that can be used to upload the specified part
+   */
   @Override
   public String getPresignedMultipartUploadUrl(String path, String uploadId, int partNumber) {
     try {
@@ -489,6 +523,15 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
+  /**
+   * Uploads a single multipart upload part using the given local file.
+   *
+   * @param path the object key in the S3-compatible storage
+   * @param uploadId multipart upload identifier
+   * @param partNumber number of the part being uploaded
+   * @param filename path to the local file that contains the part data
+   * @return ETag value returned by the storage for the uploaded part
+   */
   @Override
   public String uploadMultipartPart(String path, String uploadId, int partNumber, String filename) {
     try {
@@ -515,6 +558,12 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
+  /**
+   * Aborts an in-progress multipart upload for the given object.
+   *
+   * @param path the object key in the S3-compatible storage
+   * @param uploadId multipart upload identifier to abort
+   */
   @Override
   public void abortMultipartUpload(String path, String uploadId) {
     try {
@@ -527,6 +576,13 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
+  /**
+   * Completes a multipart upload by assembling all uploaded parts into a single object.
+   *
+   * @param path the final object key in the S3-compatible storage
+   * @param uploadId multipart upload identifier
+   * @param partEtags list of ETag values for all uploaded parts in order
+   */
   @Override
   public void completeMultipartUpload(String path, String uploadId, List<String> partEtags) {
     try {
@@ -547,15 +603,35 @@ public class MinioS3Client implements FolioS3Client {
     }
   }
 
+  /**
+   * Adds the configured sub-path prefix to the given object key if a sub-path is configured.
+   *
+   * @param path original object key
+   * @return the object key prefixed with {@code subPath} if it is not empty; otherwise the original
+   *     key
+   */
   protected String addSubPathIfPresent(String path) {
     return fixPathWithIncorrectSymbols(
         isEmpty(subPath) ? path : String.format("%s/%s", subPath, path));
   }
 
+  /**
+   * Removes the configured sub-path prefix from the given object key, if it is present.
+   *
+   * @param path object key that may contain the {@code subPath} prefix
+   * @return the object key without the {@code subPath} prefix, or the original key if no prefix is
+   *     configured
+   */
   protected String removeSubPathIfPresent(String path) {
     return isEmpty(subPath) ? path : replaceOnce(path, subPath + "/", EMPTY);
   }
 
+  /**
+   * Normalizes the given object key by removing duplicate slashes.
+   *
+   * @param path object key to normalize
+   * @return normalized object key with multiple consecutive slashes collapsed to a single slash
+   */
   protected String fixPathWithIncorrectSymbols(String path) {
     return path.replace("//", "/");
   }

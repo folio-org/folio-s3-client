@@ -3,6 +3,12 @@ package org.folio.s3.client;
 import lombok.Builder;
 import lombok.Data;
 
+/**
+ * Configuration properties for configuring the S3 client.
+ *
+ * <p>This class contains essential connection settings such as endpoint, region, credentials, and
+ * bucket name. It is used to initialize {@link AwsS3Client} or other S3-compatible clients.
+ */
 @Data
 @Builder
 public class S3ClientProperties {

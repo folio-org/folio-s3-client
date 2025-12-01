@@ -5,6 +5,18 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Defines the contract for interacting with an S3-compatible object storage within the FOLIO
+ * platform. Implementations of this interface provide high-level operations for uploading,
+ * downloading, deleting, and managing objects stored in S3 buckets.
+ *
+ * <p>This interface abstracts the underlying S3 provider implementation (e.g., AWS S3, MinIO, or
+ * other S3-compatible storages) to ensure consistent usage across FOLIO modules. It allows modules
+ * to work with object storage without depending on provider-specific APIs.
+ *
+ * <p>Typical use cases include storing exported records, file uploads, generated reports, and other
+ * binary assets required by FOLIO modules.
+ */
 public interface FolioS3Client {
   /**
    * Upload file on S3-compatible storage.

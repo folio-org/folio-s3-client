@@ -11,6 +11,14 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.exception.S3ClientException;
 
+/**
+ * Writer implementation that buffers data into a temporary local file and uploads it to remote
+ * storage via {@link FolioS3Client} when closed.
+ *
+ * <p>The content written to this writer is not kept in memory, but streamed into a temporary file
+ * to avoid excessive memory usage for large payloads. On {@link #close()}, the file is sent to the
+ * configured S3-compatible storage and then deleted from the local filesystem.
+ */
 public class RemoteStorageWriter extends StringWriter {
 
   private final File tmp;
@@ -18,6 +26,15 @@ public class RemoteStorageWriter extends StringWriter {
   private final BufferedWriter writer;
   private final FolioS3Client s3Client;
 
+  /**
+   * Creates a new {@code RemoteStorageWriter} instance that writes data to a temporary file and
+   * uploads it to remote storage on close.
+   *
+   * @param path key or path under which the file will be stored in remote storage
+   * @param size buffer size for the underlying {@link BufferedWriter}
+   * @param s3Client client used to upload the temporary file to S3-compatible storage
+   * @throws S3ClientException if the temporary file or writer cannot be created
+   */
   public RemoteStorageWriter(String path, int size, FolioS3Client s3Client) {
     try {
       this.s3Client = s3Client;

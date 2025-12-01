@@ -16,13 +16,33 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.CompletableFuture;
 
-/** {@link MinioAsyncClient} with visibility of some methods raised from protected to public. */
+/**
+ * Extended MinIO asynchronous client that exposes certain protected methods from {@link
+ * MinioAsyncClient} as public. This wrapper allows higher-level components to invoke multipart
+ * upload operations that are otherwise not directly accessible.
+ *
+ * <p>This class does not modify the original MinIO client behavior. It only increases the
+ * visibility of selected methods to support advanced S3-compatible storage operations within the
+ * FOLIO ecosystem.
+ */
 public class ExtendedMinioAsyncClient extends MinioAsyncClient {
 
+  /**
+   * Creates a new {@code ExtendedMinioAsyncClient} based on an existing {@link MinioAsyncClient}
+   * instance.
+   *
+   * @param client the underlying MinIO asynchronous client
+   */
   public ExtendedMinioAsyncClient(MinioAsyncClient client) {
     super(client);
   }
 
+  /**
+   * Builds a new {@code ExtendedMinioAsyncClient} using the provided MinIO client builder.
+   *
+   * @param builder MinIO client builder
+   * @return initialized {@code ExtendedMinioAsyncClient}
+   */
   public static ExtendedMinioAsyncClient build(Builder builder) {
     return new ExtendedMinioAsyncClient(builder.build());
   }

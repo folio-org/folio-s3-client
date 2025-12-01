@@ -27,6 +27,13 @@ import software.amazon.awssdk.services.s3.model.UploadPartRequest;
 import software.amazon.awssdk.transfer.s3.S3TransferManager;
 import software.amazon.awssdk.transfer.s3.model.UploadRequest;
 
+/**
+ * AWS S3 client implementation based on the FOLIO MinioS3Client abstraction.
+ *
+ * <p>This client provides integration with AWS S3 storage using configuration provided through
+ * {@link S3ClientProperties}. It extends {@link MinioS3Client} to reuse common S3-compatible
+ * operations while relying on the AWS SDK.
+ */
 @Log4j2
 public class AwsS3Client extends MinioS3Client {
 
@@ -35,12 +42,22 @@ public class AwsS3Client extends MinioS3Client {
   private static final int PART_NUMBER_ONE = 1;
   private static final int PART_NUMBER_TWO = 2;
 
+  /**
+   * Creates a new {@link AwsS3Client} instance using the provided S3 client properties.
+   *
+   * @param s3ClientProperties configuration parameters required for connecting to AWS S3
+   */
   AwsS3Client(S3ClientProperties s3ClientProperties, S3AsyncClient client) {
     super(s3ClientProperties);
     this.client = client;
     bucket = s3ClientProperties.getBucket();
   }
 
+  /**
+   * Creates an AWS S3 client using the provided S3 client properties.
+   *
+   * @param s3ClientProperties configuration properties for establishing the AWS S3 connection
+   */
   public AwsS3Client(S3ClientProperties s3ClientProperties) {
     this(s3ClientProperties, createS3Client(s3ClientProperties));
   }
