@@ -10,6 +10,10 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Set;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.exception.S3ClientException;
@@ -28,10 +32,9 @@ public class RemoteStorageWriter extends StringWriter {
 
   static {
     try {
-      SAFE_TMP_DIR = Files.createTempDirectory("folio-s3-");
-      SAFE_TMP_DIR.toFile().setReadable(true, true);
-      SAFE_TMP_DIR.toFile().setWritable(true, true);
-      SAFE_TMP_DIR.toFile().setExecutable(true, true);
+      Set<PosixFilePermission> perms = PosixFilePermissions.fromString("rwx------");
+      FileAttribute<Set<PosixFilePermission>> attrs = PosixFilePermissions.asFileAttribute(perms);
+      SAFE_TMP_DIR = Files.createTempDirectory("folio-s3-", attrs);
     } catch (IOException e) {
       throw new IllegalStateException("Cannot create safe temp directory", e);
     }
