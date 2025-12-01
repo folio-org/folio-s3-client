@@ -1,13 +1,16 @@
 package org.folio.s3.client;
 
+import static org.apache.commons.io.FilenameUtils.getExtension;
+import static org.apache.commons.io.FilenameUtils.getName;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.exception.S3ClientException;
 
@@ -20,6 +23,19 @@ import org.folio.s3.exception.S3ClientException;
  * configured S3-compatible storage and then deleted from the local filesystem.
  */
 public class RemoteStorageWriter extends StringWriter {
+
+  private static final Path SAFE_TMP_DIR;
+
+  static {
+    try {
+      SAFE_TMP_DIR = Files.createTempDirectory("folio-s3-");
+      SAFE_TMP_DIR.toFile().setReadable(true, true);
+      SAFE_TMP_DIR.toFile().setWritable(true, true);
+      SAFE_TMP_DIR.toFile().setExecutable(true, true);
+    } catch (IOException e) {
+      throw new IllegalStateException("Cannot create safe temp directory", e);
+    }
+  }
 
   private final File tmp;
   private final String path;
@@ -41,8 +57,7 @@ public class RemoteStorageWriter extends StringWriter {
       this.path = path;
 
       this.tmp =
-          Files.createTempFile(FilenameUtils.getName(path), FilenameUtils.getExtension(path))
-              .toFile();
+          Files.createTempFile(SAFE_TMP_DIR, getName(path), "." + getExtension(path)).toFile();
 
       this.writer = new BufferedWriter(new FileWriter(this.tmp), size);
     } catch (Exception ex) {
