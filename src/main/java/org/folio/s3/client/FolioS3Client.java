@@ -1,85 +1,84 @@
 package org.folio.s3.client;
 
 import io.minio.http.Method;
-
 import java.io.InputStream;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public interface FolioS3Client {
   /**
-   * Upload file on S3-compatible storage
+   * Upload file on S3-compatible storage.
    *
-   * @param path     the path to the file on S3-compatible storage
+   * @param path the path to the file on S3-compatible storage
    * @param filename path to uploaded file
    * @return the path to the file
    */
   String upload(String path, String filename);
 
   /**
-   * Appends content of input stream to the file on S3 storage. In case file
-   * doesn't exist it will be created automatically.
+   * Appends content of input stream to the file on S3 storage. In case file doesn't exist it will
+   * be created automatically.
    *
    * @param path the path to the file on S3-compatible storage
-   * @param is   input stream with appendable data
+   * @param is input stream with appendable data
    * @return path of updated file
    */
   String append(String path, InputStream is);
 
   /**
-   * Writes an input stream to a file on S3-compatible storage
+   * Writes an input stream to a file on S3-compatible storage.
    *
    * @param path the path to the file on S3-compatible storage
-   * @param is   the input stream to write
+   * @param is the input stream to write
    * @return the path to the file
    */
   String write(String path, InputStream is);
 
   /**
-   * Writes Input Stream to a file on S3-compatible storage with extra headers
+   * Writes Input Stream to a file on S3-compatible storage with extra headers.
    *
    * @param path the path to the file on S3-compatible storage
-   * @param is   the input stream to write
+   * @param is the input stream to write
    * @param size the number of bytes to write
    * @return the path to the file
    */
   String write(String path, InputStream is, long size);
 
   /**
-   * Writes Input Stream to a file on S3-compatible storage with extra headers
+   * Writes Input Stream to a file on S3-compatible storage with extra headers.
    *
-   * @param path         the path to the file on S3-compatible storage
-   * @param is           the input stream to write
-   * @param size         the number of bytes to write
+   * @param path the path to the file on S3-compatible storage
+   * @param is the input stream to write
+   * @param size the number of bytes to write
    * @param extraOptions additional metadata to store with the file
    * @return the path to the file
    */
   String write(String path, InputStream is, long size, PutObjectAdditionalOptions extraOptions);
 
   /**
-   * Composes multiple objects into a single object. Note that each object
-   *   except the last must be at least 5MB (minimum multipart part size)
+   * Composes multiple objects into a single object. Note that each object except the last must be
+   * at least 5MB (minimum multipart part size).
    *
    * @param destination the destination object key
-   * @param sourceKeys  the list of source object keys to compose
+   * @param sourceKeys the list of source object keys to compose
    * @return the newly created composed object key
    */
   String compose(String destination, List<String> sourceKeys);
 
   /**
-   * Composes multiple objects into a single object, with extra headers. Note
-   *   that each object except the last must be at least 5MB (minimum multipart
-   *   part size)
+   * Composes multiple objects into a single object, with extra headers. Note that each object
+   * except the last must be at least 5MB (minimum multipart part size).
    *
-   * @param destination  the destination object key
-   * @param sourceKeys   the list of source object keys to compose
+   * @param destination the destination object key
+   * @param sourceKeys the list of source object keys to compose
    * @param extraOptions additional metadata to store with the file
    * @return the newly created composed object key
    */
-  String compose(String destination, List<String> sourceKeys, PutObjectAdditionalOptions extraOptions);
+  String compose(
+      String destination, List<String> sourceKeys, PutObjectAdditionalOptions extraOptions);
 
   /**
-   * Removes a file on S3 storage
+   * Removes a file on S3 storage.
    *
    * @param path the path to the file to delete
    * @return path of removed file
@@ -87,7 +86,7 @@ public interface FolioS3Client {
   String remove(String path);
 
   /**
-   * Removes a files on S3 storage
+   * Removes a files on S3 storage.
    *
    * @param paths array of file paths to delete
    * @return list of deleted file paths
@@ -95,8 +94,8 @@ public interface FolioS3Client {
   List<String> remove(String... paths);
 
   /**
-   * Opens a file on remote storage, returns an input stream to read from the
-   * file. InputStream should be read and closed properly.
+   * Opens a file on remote storage, returns an input stream to read from the file. InputStream
+   * should be read and closed properly.
    *
    * @param path - the path to the file on S3-compatible storage
    * @return a new input stream with file content
@@ -104,7 +103,7 @@ public interface FolioS3Client {
   InputStream read(String path);
 
   /**
-   * Get list of object paths
+   * Get list of object paths.
    *
    * @param path - the path to the file on S3-compatible storage
    * @return list of object paths
@@ -112,15 +111,7 @@ public interface FolioS3Client {
   List<String> list(String path);
 
   /**
-   * Get list of object paths, recursively
-   *
-   * @param path - the path to the file on S3-compatible storage
-   * @return list of object paths
-   */
-  List<String> listRecursive(String path);
-
-  /**
-   * Get iterable list of object paths
+   * Get iterable list of object paths.
    *
    * @param path - the path to the file on S3-compatible storage
    * @return iterable list of object paths
@@ -128,7 +119,15 @@ public interface FolioS3Client {
   List<String> list(String path, int maxKeys, String startAfter);
 
   /**
-   * Returns size of the object on S3 storage
+   * Get list of object paths, recursively.
+   *
+   * @param path - the path to the file on S3-compatible storage
+   * @return list of object paths
+   */
+  List<String> listRecursive(String path);
+
+  /**
+   * Returns size of the object on S3 storage.
    *
    * @param path - the path to the file on S3-compatible storage
    * @return size of the object
@@ -136,7 +135,7 @@ public interface FolioS3Client {
   long getSize(String path);
 
   /**
-   * Returns RemoteStorageWriter of the S3Client
+   * Returns RemoteStorageWriter of the S3Client.
    *
    * @param path - the path to the temp file that will be used for FileWriter
    * @param size - output-buffer size of FileWriter
@@ -145,7 +144,7 @@ public interface FolioS3Client {
   RemoteStorageWriter getRemoteStorageWriter(String path, int size);
 
   /**
-   * Returns presigned GET url for object on S3-compatible storage
+   * Returns presigned GET url for object on S3-compatible storage.
    *
    * @param path - the path to the file on S3-compatible storage
    * @return presigned url of object
@@ -153,28 +152,26 @@ public interface FolioS3Client {
   String getPresignedUrl(String path);
 
   /**
-   * Returns presigned url for object on S3-compatible storage
+   * Returns presigned url for object on S3-compatible storage.
    *
-   * @param path   - the path to the file on S3-compatible storage
+   * @param path - the path to the file on S3-compatible storage
    * @param method - http method
    * @return presigned url of object
    */
   String getPresignedUrl(String path, Method method);
 
   /**
-   * Returns presigned url for object on S3-compatible storage with custom expiry
+   * Returns presigned url for object on S3-compatible storage with custom expiry.
    *
-   * @param path       - the path to the file on S3-compatible storage
-   * @param method     - http method
+   * @param path - the path to the file on S3-compatible storage
+   * @param method - http method
    * @param expiryTime - expiry time
    * @param expiryUnit - expiry time unit
    * @return presigned url of object
    */
   String getPresignedUrl(String path, Method method, int expiryTime, TimeUnit expiryUnit);
 
-  /**
-   * Creates bucket. Bucket name should be declared in {@link S3ClientProperties}
-   */
+  /** Creates bucket. Bucket name should be declared in {@link S3ClientProperties} */
   void createBucketIfNotExists();
 
   /**
@@ -188,41 +185,32 @@ public interface FolioS3Client {
   String initiateMultipartUpload(String path);
 
   /**
-   * Gets a presigned URL to PUT a part of a multipart upload
+   * Gets a presigned URL to PUT a part of a multipart upload.
    *
-   * @param path       - the path to the file on S3-compatible storage
-   * @param uploadId   - the upload ID from
-   *                   {@link #initiateMultipartUpload(String)}
+   * @param path - the path to the file on S3-compatible storage
+   * @param uploadId - the upload ID from {@link #initiateMultipartUpload(String)}
    * @param partNumber - the part number of the part to upload, starts at 1
    * @return the presigned URL
    * @see #initiateMultipartUpload(String)
    */
-  String getPresignedMultipartUploadUrl(
-      String path,
-      String uploadId,
-      int partNumber);
+  String getPresignedMultipartUploadUrl(String path, String uploadId, int partNumber);
 
   /**
-   * Uploads a part of a multipart upload from a local file
+   * Uploads a part of a multipart upload from a local file.
    *
-   * @param path       - the path to the file on S3-compatible storage
-   * @param uploadId   - the upload ID from
-   *                   {@link #initiateMultipartUpload(String)}
+   * @param path - the path to the file on S3-compatible storage
+   * @param uploadId - the upload ID from {@link #initiateMultipartUpload(String)}
    * @param partNumber - the part number of the part to upload, starts at 1
-   * @param filename   - the local uploaded file on disk
+   * @param filename - the local uploaded file on disk
    * @return the upload's eTag
    * @see #initiateMultipartUpload(String)
    */
-  String uploadMultipartPart(
-      String path,
-      String uploadId,
-      int partNumber,
-      String filename);
+  String uploadMultipartPart(String path, String uploadId, int partNumber, String filename);
 
   /**
-   * Aborts a multipart upload. Note: **this may need to be done multiple times**
+   * Aborts a multipart upload. Note: **this may need to be done multiple times**.
    *
-   * @param path     - the path to the file on S3-compatible storage
+   * @param path - the path to the file on S3-compatible storage
    * @param uploadId - the upload ID from {@link #initiateMultipartUpload(String)}
    * @see <a href="https://docs.aws.amazon.com/AmazonS3/latest/API/API_AbortMultipartUpload.html">
    *     https://docs.aws.amazon.com/AmazonS3/latest/API/API_AbortMultipartUpload.html</a>
@@ -231,20 +219,16 @@ public interface FolioS3Client {
   void abortMultipartUpload(String path, String uploadId);
 
   /**
-   * Completes a multipart upload. Note: **this may take several minutes to
-   * complete**
+   * Completes a multipart upload. Note: **this may take several minutes to complete**.
    *
-   * @param path      - the path to the file on S3-compatible storage
-   * @param uploadId  - the upload ID from
-   *                  {@link #initiateMultipartUpload(String)}
-   * @param partETags - the list of uploaded parts' eTags
-   * @see <a href="https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html">
-   *   https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html</a>
+   * @param path - the path to the file on S3-compatible storage
+   * @param uploadId - the upload ID from {@link #initiateMultipartUpload(String)}
+   * @param partEtags - the list of uploaded parts' eTags
+   * @see <a
+   *     href="https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html">
+   *     https://docs.aws.amazon.com/AmazonS3/latest/API/API_CompleteMultipartUpload.html</a>
    * @see #initiateMultipartUpload(String)
    * @see #getPresignedMultipartUploadUrl(String, String, int)
    */
-  void completeMultipartUpload(
-      String path,
-      String uploadId,
-      List<String> partETags);
+  void completeMultipartUpload(String path, String uploadId, List<String> partEtags);
 }

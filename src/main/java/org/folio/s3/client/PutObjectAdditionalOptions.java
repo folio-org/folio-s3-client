@@ -2,13 +2,10 @@ package org.folio.s3.client;
 
 import java.util.HashMap;
 import java.util.Map;
-
 import lombok.Builder;
 import lombok.Data;
 
-/**
- * Additional options supported for write and compose operations.
- */
+/** Additional options supported for write and compose operations. */
 @Data
 @Builder
 public class PutObjectAdditionalOptions {

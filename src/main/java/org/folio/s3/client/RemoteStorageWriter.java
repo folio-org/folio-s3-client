@@ -6,7 +6,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.file.Files;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -24,12 +23,14 @@ public class RemoteStorageWriter extends StringWriter {
       this.s3Client = s3Client;
       this.path = path;
 
-      this.tmp = Files.createTempFile(FilenameUtils.getName(path), FilenameUtils.getExtension(path))
-        .toFile();
+      this.tmp =
+          Files.createTempFile(FilenameUtils.getName(path), FilenameUtils.getExtension(path))
+              .toFile();
 
       this.writer = new BufferedWriter(new FileWriter(this.tmp), size);
     } catch (Exception ex) {
-      throw new S3ClientException("Files buffer cannot be created due to error: " + ex.getMessage());
+      throw new S3ClientException(
+          "Files buffer cannot be created due to error: " + ex.getMessage());
     }
   }
 
