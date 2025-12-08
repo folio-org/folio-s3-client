@@ -4,6 +4,7 @@
 * **BREAKING** [FOLS3CL-40](https://folio-org.atlassian.net/browse/FOLS3CL-40) Consistently remove subPaths from returned paths in write, remove, and append operations across both Minio and AWS S3 clients
 * **BREAKING** [FOLS3CL-40](https://folio-org.atlassian.net/browse/FOLS3CL-40) Add subPath to parameters when appending
 * [FOLS3CL-40](https://folio-org.atlassian.net/browse/FOLS3CL-40) Add compose, listRecursive, custom presigned expiry, and support for content type/disposition
+* [FOLS3CL-42](https://folio-org.atlassian.net/browse/FOLS3CL-42) io.minio:minio@8.6.0 fixing XML Injection CVE-2025-59952
 * [FOLS3CL-43](https://folio-org.atlassian.net/browse/FOLS3CL-43) software.amazon.awssdk:s3@2.40.2 fixing Netty DoS CVE-2025-24970 CVE-2025-55163
 
 ## v2.3.0 - Released
