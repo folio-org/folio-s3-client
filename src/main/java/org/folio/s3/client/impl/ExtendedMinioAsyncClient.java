@@ -17,15 +17,32 @@ import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * {@link MinioAsyncClient} with visibility of some methods raised
- * from protected to public.
+ * Extended MinIO asynchronous client that exposes certain protected methods from {@link
+ * MinioAsyncClient} as public. This wrapper allows higher-level components to invoke multipart
+ * upload operations that are otherwise not directly accessible.
+ *
+ * <p>This class does not modify the original MinIO client behavior. It only increases the
+ * visibility of selected methods to support advanced S3-compatible storage operations within the
+ * FOLIO ecosystem.
  */
 public class ExtendedMinioAsyncClient extends MinioAsyncClient {
 
+  /**
+   * Creates a new {@code ExtendedMinioAsyncClient} based on an existing {@link MinioAsyncClient}
+   * instance.
+   *
+   * @param client the underlying MinIO asynchronous client
+   */
   public ExtendedMinioAsyncClient(MinioAsyncClient client) {
     super(client);
   }
 
+  /**
+   * Builds a new {@code ExtendedMinioAsyncClient} using the provided MinIO client builder.
+   *
+   * @param builder MinIO client builder
+   * @return initialized {@code ExtendedMinioAsyncClient}
+   */
   public static ExtendedMinioAsyncClient build(Builder builder) {
     return new ExtendedMinioAsyncClient(builder.build());
   }
@@ -37,10 +54,15 @@ public class ExtendedMinioAsyncClient extends MinioAsyncClient {
       String objectName,
       Multimap<String, String> headers,
       Multimap<String, String> extraQueryParams)
-          throws InsufficientDataException, InternalException, InvalidKeyException, IOException,
-          NoSuchAlgorithmException, XmlParserException {
+      throws InsufficientDataException,
+          InternalException,
+          InvalidKeyException,
+          IOException,
+          NoSuchAlgorithmException,
+          XmlParserException {
 
-    return super.createMultipartUploadAsync(bucketName, region, objectName, headers, extraQueryParams);
+    return super.createMultipartUploadAsync(
+        bucketName, region, objectName, headers, extraQueryParams);
   }
 
   @Override
@@ -52,10 +74,15 @@ public class ExtendedMinioAsyncClient extends MinioAsyncClient {
       int partNumber,
       Multimap<String, String> headers,
       Multimap<String, String> extraQueryParams)
-          throws InsufficientDataException, InternalException, InvalidKeyException, IOException,
-          NoSuchAlgorithmException, XmlParserException {
+      throws InsufficientDataException,
+          InternalException,
+          InvalidKeyException,
+          IOException,
+          NoSuchAlgorithmException,
+          XmlParserException {
 
-    return super.uploadPartCopyAsync(bucketName, region, objectName, uploadId, partNumber, headers, extraQueryParams);
+    return super.uploadPartCopyAsync(
+        bucketName, region, objectName, uploadId, partNumber, headers, extraQueryParams);
   }
 
   @Override
@@ -69,10 +96,23 @@ public class ExtendedMinioAsyncClient extends MinioAsyncClient {
       int partNumber,
       Multimap<String, String> extraHeaders,
       Multimap<String, String> extraQueryParams)
-          throws InsufficientDataException, InternalException, InvalidKeyException, IOException,
-          NoSuchAlgorithmException, XmlParserException {
+      throws InsufficientDataException,
+          InternalException,
+          InvalidKeyException,
+          IOException,
+          NoSuchAlgorithmException,
+          XmlParserException {
 
-    return super.uploadPartAsync(bucketName, region, objectName, data, length, uploadId, partNumber, extraHeaders, extraQueryParams);
+    return super.uploadPartAsync(
+        bucketName,
+        region,
+        objectName,
+        data,
+        length,
+        uploadId,
+        partNumber,
+        extraHeaders,
+        extraQueryParams);
   }
 
   @Override
@@ -84,10 +124,15 @@ public class ExtendedMinioAsyncClient extends MinioAsyncClient {
       Part[] parts,
       Multimap<String, String> extraHeaders,
       Multimap<String, String> extraQueryParams)
-          throws InsufficientDataException, InternalException, InvalidKeyException, IOException,
-          NoSuchAlgorithmException, XmlParserException {
+      throws InsufficientDataException,
+          InternalException,
+          InvalidKeyException,
+          IOException,
+          NoSuchAlgorithmException,
+          XmlParserException {
 
-    return super.completeMultipartUploadAsync(bucketName, region, objectName, uploadId, parts, extraHeaders, extraQueryParams);
+    return super.completeMultipartUploadAsync(
+        bucketName, region, objectName, uploadId, parts, extraHeaders, extraQueryParams);
   }
 
   @Override
@@ -98,9 +143,14 @@ public class ExtendedMinioAsyncClient extends MinioAsyncClient {
       String uploadId,
       Multimap<String, String> extraHeaders,
       Multimap<String, String> extraQueryParams)
-          throws InsufficientDataException, InternalException, InvalidKeyException, IOException,
-          NoSuchAlgorithmException, XmlParserException {
+      throws InsufficientDataException,
+          InternalException,
+          InvalidKeyException,
+          IOException,
+          NoSuchAlgorithmException,
+          XmlParserException {
 
-    return super.abortMultipartUploadAsync(bucketName, region, objectName, uploadId, extraHeaders, extraQueryParams);
+    return super.abortMultipartUploadAsync(
+        bucketName, region, objectName, uploadId, extraHeaders, extraQueryParams);
   }
 }
