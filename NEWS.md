@@ -1,4 +1,7 @@
-## v2.3.1 - In Progress
+## v2.3.2 - In Progress
+
+## v2.3.1 - Released
+This release contains security fixes for minio library
 
 ### Bug fixes
 * [FOLS3CL-42](https://folio-org.atlassian.net/browse/FOLS3CL-42) io.minio:minio@8.6.0 fixing XML Injection CVE-2025-59952 CVE-2025-8916
