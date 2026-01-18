@@ -1,13 +1,13 @@
-## v3.0.0 - In Progress
+## v2.2.4 - In Progress
+
+## v2.2.3 - Released
+This release contains library improvements
 
 ### Stories
 * [FOLS3CL-41](https://folio-org.atlassian.net/browse/FOLS3CL-41) folio-s3-client improvements
 * **BREAKING** [FOLS3CL-40](https://folio-org.atlassian.net/browse/FOLS3CL-40) Consistently remove subPaths from returned paths in write, remove, and append operations across both Minio and AWS S3 clients
 * **BREAKING** [FOLS3CL-40](https://folio-org.atlassian.net/browse/FOLS3CL-40) Add subPath to parameters when appending
 * [FOLS3CL-40](https://folio-org.atlassian.net/browse/FOLS3CL-40) Add compose, listRecursive, custom presigned expiry, and support for content type/disposition
-
-## v2.3.0 - Released
-This release contains upgrade to Java 21 and dependencies upgrading
 
 ## v2.2.2 - Released
 This release contains security fixes for minio library
