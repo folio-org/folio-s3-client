@@ -74,12 +74,12 @@ public class AwsS3Client extends MinioS3Client {
   public String write(String path, InputStream is) {
     log.debug("Writing with using AWS SDK client");
     try (is) {
-      return client.putObject(PutObjectRequest.builder()
+      return removeSubPathIfPresent(client.putObject(PutObjectRequest.builder()
                       .bucket(bucket)
                       .key(addSubPathIfPresent(path))
                       .build(), AsyncRequestBody.fromBytes(is.readAllBytes()))
               .thenApply(response -> path)
-              .get();
+              .get());
     } catch (Exception e) {
       throw new S3ClientException("Cannot write file: " + path, e);
     }
@@ -87,18 +87,34 @@ public class AwsS3Client extends MinioS3Client {
 
   @Override
   public String write(String path, InputStream is, long size) {
+    return write(path, is, size, null);
+  }
+
+  @Override
+  public String write(String path, InputStream is, long size, PutObjectAdditionalOptions extraOptions) {
     log.debug("Writing with using AWS SDK client");
     try (is; var manager = S3TransferManager.builder().s3Client(client).build()) {
+      PutObjectRequest.Builder putObjectRequestBuilder = PutObjectRequest.builder()
+              .bucket(bucket)
+              .key(addSubPathIfPresent(path));
+
+      if (extraOptions != null) {
+        if (extraOptions.getContentDisposition() != null) {
+          putObjectRequestBuilder.contentDisposition(extraOptions.getContentDisposition());
+        }
+        if (extraOptions.getContentType() != null) {
+          putObjectRequestBuilder.contentType(extraOptions.getContentType());
+        }
+      }
+
       UploadRequest uploadRequest = UploadRequest.builder()
-              .putObjectRequest(PutObjectRequest.builder()
-                      .bucket(bucket)
-                      .key(addSubPathIfPresent(path))
-                      .build())
+              .putObjectRequest(putObjectRequestBuilder.build())
               .requestBody(AsyncRequestBody.fromInputStream(is, size, Executors.newCachedThreadPool()))
               .build();
-      return manager.upload(uploadRequest).completionFuture()
+
+      return removeSubPathIfPresent(manager.upload(uploadRequest).completionFuture()
               .thenApply(response -> path)
-              .get();
+              .get());
     } catch (Exception e) {
       throw new S3ClientException("Cannot write file: " + path, e);
     }
@@ -124,7 +140,7 @@ public class AwsS3Client extends MinioS3Client {
 
           var createMultipartUploadRequest = CreateMultipartUploadRequest.builder()
             .bucket(bucket)
-            .key(path)
+            .key(addSubPathIfPresent(path))
             .build();
 
           uploadId = client.createMultipartUpload(createMultipartUploadRequest).join()
@@ -132,16 +148,16 @@ public class AwsS3Client extends MinioS3Client {
 
           var uploadPartRequest1 = UploadPartCopyRequest.builder()
             .sourceBucket(bucket)
-            .sourceKey(path)
+            .sourceKey(addSubPathIfPresent(path))
             .uploadId(uploadId)
             .destinationBucket(bucket)
-            .destinationKey(path)
+            .destinationKey(addSubPathIfPresent(path))
             .partNumber(PART_NUMBER_ONE)
             .build();
 
           var uploadPartRequest2 = UploadPartRequest.builder()
             .bucket(bucket)
-            .key(path)
+            .key(addSubPathIfPresent(path))
             .uploadId(uploadId)
             .partNumber(PART_NUMBER_TWO)
             .build();
@@ -167,14 +183,13 @@ public class AwsS3Client extends MinioS3Client {
 
           var completeMultipartUploadRequest = CompleteMultipartUploadRequest.builder()
             .bucket(bucket)
-            .key(path)
+            .key(addSubPathIfPresent(path))
             .uploadId(uploadId)
             .multipartUpload(completedMultipartUpload)
             .build();
 
-          return client.completeMultipartUpload(completeMultipartUploadRequest).join()
-            .key();
-
+          return removeSubPathIfPresent(client.completeMultipartUpload(completeMultipartUploadRequest).join()
+            .key());
         } else {
           var original = read(path);
           var composed = new SequenceInputStream(original, is);
@@ -186,7 +201,7 @@ public class AwsS3Client extends MinioS3Client {
         try {
           client.abortMultipartUpload(AbortMultipartUploadRequest.builder()
               .bucket(bucket)
-              .key(path)
+              .key(addSubPathIfPresent(path))
               .uploadId(uploadId)
               .build());
         } catch (Exception e2) {

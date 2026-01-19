@@ -4,6 +4,7 @@ import io.minio.http.Method;
 
 import java.io.InputStream;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public interface FolioS3Client {
   /**
@@ -26,22 +27,56 @@ public interface FolioS3Client {
   String append(String path, InputStream is);
 
   /**
-   * Writes bytes to a file on S3-compatible storage
+   * Writes an input stream to a file on S3-compatible storage
    *
    * @param path the path to the file on S3-compatible storage
-   * @param is   the byte array with the bytes to write
+   * @param is   the input stream to write
    * @return the path to the file
    */
   String write(String path, InputStream is);
 
   /**
-   * Writes Input Stream to a file on S3-compatible storage
+   * Writes Input Stream to a file on S3-compatible storage with extra headers
    *
    * @param path the path to the file on S3-compatible storage
-   * @param is   the byte array with the bytes to write
+   * @param is   the input stream to write
+   * @param size the number of bytes to write
    * @return the path to the file
    */
   String write(String path, InputStream is, long size);
+
+  /**
+   * Writes Input Stream to a file on S3-compatible storage with extra headers
+   *
+   * @param path         the path to the file on S3-compatible storage
+   * @param is           the input stream to write
+   * @param size         the number of bytes to write
+   * @param extraOptions additional metadata to store with the file
+   * @return the path to the file
+   */
+  String write(String path, InputStream is, long size, PutObjectAdditionalOptions extraOptions);
+
+  /**
+   * Composes multiple objects into a single object. Note that each object
+   *   except the last must be at least 5MB (minimum multipart part size)
+   *
+   * @param destination the destination object key
+   * @param sourceKeys  the list of source object keys to compose
+   * @return the newly created composed object key
+   */
+  String compose(String destination, List<String> sourceKeys);
+
+  /**
+   * Composes multiple objects into a single object, with extra headers. Note
+   *   that each object except the last must be at least 5MB (minimum multipart
+   *   part size)
+   *
+   * @param destination  the destination object key
+   * @param sourceKeys   the list of source object keys to compose
+   * @param extraOptions additional metadata to store with the file
+   * @return the newly created composed object key
+   */
+  String compose(String destination, List<String> sourceKeys, PutObjectAdditionalOptions extraOptions);
 
   /**
    * Removes a file on S3 storage
@@ -75,6 +110,14 @@ public interface FolioS3Client {
    * @return list of object paths
    */
   List<String> list(String path);
+
+  /**
+   * Get list of object paths, recursively
+   *
+   * @param path - the path to the file on S3-compatible storage
+   * @return list of object paths
+   */
+  List<String> listRecursive(String path);
 
   /**
    * Get iterable list of object paths
@@ -117,6 +160,17 @@ public interface FolioS3Client {
    * @return presigned url of object
    */
   String getPresignedUrl(String path, Method method);
+
+  /**
+   * Returns presigned url for object on S3-compatible storage with custom expiry
+   *
+   * @param path       - the path to the file on S3-compatible storage
+   * @param method     - http method
+   * @param expiryTime - expiry time
+   * @param expiryUnit - expiry time unit
+   * @return presigned url of object
+   */
+  String getPresignedUrl(String path, Method method, int expiryTime, TimeUnit expiryUnit);
 
   /**
    * Creates bucket. Bucket name should be declared in {@link S3ClientProperties}
