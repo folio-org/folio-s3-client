@@ -10,14 +10,10 @@ This is a shared library for FOLIO S3-client.
 
 ## Overview
 
-FOLIO S3-client supports Minio S3 storage. It can be used when module should operate with data on S3 storage. Any module can use the aws client by including this dependency:
-```
-    <dependency>
-      <groupId>software.amazon.awssdk</groupId>
-      <artifactId>aws-sdk-java</artifactId>
-      <version>2.19.2</version>
-    </dependency>
-```
+FOLIO S3 client can be used when module should operate with data on S3 storage.
+
+It ships with both MinIO S3 client and AWS S3 client.
+
 ### Issue tracker
 
 See project [FOLS3CL](https://issues.folio.org/browse/FOLS3CL)
