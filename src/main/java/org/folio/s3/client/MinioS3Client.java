@@ -6,6 +6,26 @@ import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.replaceOnce;
 
+import com.google.common.collect.ImmutableMultimap;
+import io.minio.BucketExistsArgs;
+import io.minio.ComposeObjectArgs;
+import io.minio.ComposeSource;
+import io.minio.GetObjectArgs;
+import io.minio.GetPresignedObjectUrlArgs;
+import io.minio.ListObjectsArgs;
+import io.minio.MakeBucketArgs;
+import io.minio.MinioAsyncClient;
+import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
+import io.minio.RemoveObjectsArgs;
+import io.minio.StatObjectArgs;
+import io.minio.UploadObjectArgs;
+import io.minio.credentials.IamAwsProvider;
+import io.minio.credentials.Provider;
+import io.minio.credentials.StaticProvider;
+import io.minio.http.Method;
+import io.minio.messages.DeleteObject;
+import io.minio.messages.Part;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
@@ -20,38 +40,22 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import io.minio.BucketExistsArgs;
-import io.minio.ComposeObjectArgs;
-import io.minio.ComposeSource;
-import io.minio.GetObjectArgs;
-import io.minio.GetPresignedObjectUrlArgs;
-import io.minio.ListObjectsArgs;
-import io.minio.MakeBucketArgs;
-import io.minio.MinioAsyncClient;
-import io.minio.PutObjectArgs;
-import io.minio.RemoveObjectArgs;
-import io.minio.RemoveObjectsArgs;
-import io.minio.StatObjectArgs;
-import io.minio.UploadObjectArgs;
-import io.minio.http.Method;
+import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.s3.client.impl.ExtendedMinioAsyncClient;
 import org.folio.s3.exception.S3ClientException;
 
-import com.google.common.collect.ImmutableMultimap;
-
-import io.minio.credentials.IamAwsProvider;
-import io.minio.credentials.Provider;
-import io.minio.credentials.StaticProvider;
-import io.minio.messages.DeleteObject;
-import io.minio.messages.Part;
-import lombok.extern.log4j.Log4j2;
-
+/**
+ * FOLIO S3 client implementation for MinIO-based S3-compatible storage.
+ *
+ * <p>This client provides basic object storage operations such as upload, download, listing,
+ * deletion, multipart uploads, and presigned URL generation. It wraps {@link
+ * ExtendedMinioAsyncClient} and exposes a {@link FolioS3Client} interface suitable for use within
+ * FOLIO modules. 2142: we wrap and rethrow InterruptedException as S3ClientException 2221: we want
+ * to catch the exceptions from the minio client, but the list is long, so we simply specify
+ * `Exception` for simplicity
+ */
 @Log4j2
-// 2142: we wrap and rethrow InterruptedException as S3ClientException
-// 2221: we want to catch the exceptions from the minio client, but the list is long,
-//         so we simply specify `Exception` for simplicity
 @SuppressWarnings({"java:S2142", "java:S2221"})
 public class MinioS3Client implements FolioS3Client {
 
@@ -70,10 +74,22 @@ public class MinioS3Client implements FolioS3Client {
     this.client = client;
   }
 
+  /**
+   * Creates a new {@link MinioS3Client} instance using the given S3 client properties.
+   *
+   * @param properties configuration properties for connecting to the S3-compatible storage
+   */
   public MinioS3Client(S3ClientProperties properties) {
     this(properties, createClient(properties));
   }
 
+  /**
+   * Creates and configures an {@link ExtendedMinioAsyncClient} instance based on the given
+   * properties.
+   *
+   * @param properties configuration properties containing endpoint, credentials, bucket and region
+   * @return configured {@link ExtendedMinioAsyncClient} instance
+   */
   static ExtendedMinioAsyncClient createClient(S3ClientProperties properties) {
     final String accessKey = properties.getAccessKey();
     final String secretKey = properties.getSecretKey();
@@ -81,11 +97,15 @@ public class MinioS3Client implements FolioS3Client {
     final String region = properties.getRegion();
     final String bucket = properties.getBucket();
 
-    log.info("Creating MinIO client endpoint {},region {},bucket {},accessKey {},secretKey {}.", endpoint, region, bucket,
-        StringUtils.isNotBlank(accessKey) ? "<set>" : "<not set>", StringUtils.isNotBlank(secretKey) ? "<set>" : "<not set>");
+    log.info(
+        "Creating MinIO client endpoint {},region {},bucket {},accessKey {},secretKey {}.",
+        endpoint,
+        region,
+        bucket,
+        StringUtils.isNotBlank(accessKey) ? "<set>" : "<not set>",
+        StringUtils.isNotBlank(secretKey) ? "<set>" : "<not set>");
 
-    var builder = MinioAsyncClient.builder()
-      .endpoint(endpoint);
+    var builder = MinioAsyncClient.builder().endpoint(endpoint);
     if (StringUtils.isNotBlank(region)) {
       builder.region(region);
     }
@@ -96,30 +116,31 @@ public class MinioS3Client implements FolioS3Client {
     } else {
       provider = new IamAwsProvider(null, null);
     }
-    log.debug("{} MinIO credentials provider created.", provider.getClass()
-      .getSimpleName());
+    log.debug("{} MinIO credentials provider created.", provider.getClass().getSimpleName());
     builder.credentialsProvider(provider);
     return ExtendedMinioAsyncClient.build(builder);
   }
 
+  /**
+   * Creates the bucket configured for this client if it does not already exist.
+   *
+   * <p>If the bucket name is blank, the method does nothing. Any errors from the underlying MinIO
+   * client are wrapped and rethrown as {@link S3ClientException}.
+   */
   public void createBucketIfNotExists() {
     try {
       if (StringUtils.isBlank(bucket)) {
         log.debug("Bucket name is null, empty or blank.");
         return;
       }
-      var exists = client.bucketExists(BucketExistsArgs.builder()
-        .bucket(bucket)
-        .region(region)
-        .build())
-        .get();
+      var exists =
+          client
+              .bucketExists(BucketExistsArgs.builder().bucket(bucket).region(region).build())
+              .get();
       if (Boolean.TRUE.equals(exists)) {
         log.debug("Bucket already exists.");
       }
-      client.makeBucket(MakeBucketArgs.builder()
-        .bucket(bucket)
-        .region(region)
-        .build());
+      client.makeBucket(MakeBucketArgs.builder().bucket(bucket).region(region).build());
       log.debug("Created {} bucket.", bucket);
     } catch (Exception e) {
       log.error("Error creating bucket {}: {}", bucket, e.getMessage(), e);
@@ -129,15 +150,17 @@ public class MinioS3Client implements FolioS3Client {
 
   private String upload(String path, String filename, Map<String, String> headers) {
     try {
-      return client.uploadObject(UploadObjectArgs.builder()
-        .bucket(bucket)
-        .region(region)
-        .object(addSubPathIfPresent(filename))
-        .headers(headers)
-        .filename(path)
-        .build())
-        .get()
-        .object();
+      return client
+          .uploadObject(
+              UploadObjectArgs.builder()
+                  .bucket(bucket)
+                  .region(region)
+                  .object(addSubPathIfPresent(filename))
+                  .headers(headers)
+                  .filename(path)
+                  .build())
+          .get()
+          .object();
     } catch (Exception e) {
       throw new S3ClientException("Cannot upload file: " + path, e);
     }
@@ -149,7 +172,12 @@ public class MinioS3Client implements FolioS3Client {
   }
 
   /**
-   * {@code @deprecated, won't be used in future due to unstable work}
+   * {@code @deprecated, won't be used in future due to unstable work} This method appends data to
+   * stored file.
+   *
+   * @param path the path to the file on S3-compatible storage
+   * @param is input stream with appendable data
+   * @return path of file with appended data
    */
   @Deprecated(forRemoval = true)
   @Override
@@ -170,32 +198,40 @@ public class MinioS3Client implements FolioS3Client {
         return write(path, composed);
       }
 
-      var multipart = client.createMultipartUploadAsync(bucket, region, addSubPathIfPresent(path), null, null)
-        .get()
-        .result();
+      var multipart =
+          client
+              .createMultipartUploadAsync(bucket, region, addSubPathIfPresent(path), null, null)
+              .get()
+              .result();
       uploadId = multipart.uploadId();
-      var source = URLEncoder.encode(bucket + "/" + addSubPathIfPresent(path), StandardCharsets.UTF_8);
+      var source =
+          URLEncoder.encode(bucket + "/" + addSubPathIfPresent(path), StandardCharsets.UTF_8);
       var header = ImmutableMultimap.of("x-amz-copy-source", source);
-      var part1 = client.uploadPartCopyAsync(bucket, region, addSubPathIfPresent(path), uploadId, 1, header, null);
-      var part2 = client.putObject(PutObjectArgs.builder()
-        .bucket(bucket)
-        .region(region)
-        .object(addSubPathIfPresent(path))
-        .stream(is, -1, MAX_PART_SIZE)
-        .extraQueryParams(Map.of(PARAM_MULTIPART_UPLOAD_ID, uploadId, PARAM_MULTIPART_PART_NUMBER, "2"))
-        .build());
-      Part[] parts = { new Part(1, part1.get()
-        .result()
-        .etag()), new Part(2,
-            part2.get()
-              .etag()) };
-      var result = client.completeMultipartUploadAsync(bucket, region, addSubPathIfPresent(path), uploadId, parts, null, null)
-        .get();
+      var part1 =
+          client.uploadPartCopyAsync(
+              bucket, region, addSubPathIfPresent(path), uploadId, 1, header, null);
+      var part2 =
+          client.putObject(
+              PutObjectArgs.builder()
+                  .bucket(bucket)
+                  .region(region)
+                  .object(addSubPathIfPresent(path))
+                  .stream(is, -1, MAX_PART_SIZE)
+                  .extraQueryParams(
+                      Map.of(PARAM_MULTIPART_UPLOAD_ID, uploadId, PARAM_MULTIPART_PART_NUMBER, "2"))
+                  .build());
+      Part[] parts = {new Part(1, part1.get().result().etag()), new Part(2, part2.get().etag())};
+      var result =
+          client
+              .completeMultipartUploadAsync(
+                  bucket, region, addSubPathIfPresent(path), uploadId, parts, null, null)
+              .get();
       return removeSubPathIfPresent(result.object());
     } catch (Exception e) {
       if (uploadId != null) {
         try {
-          client.abortMultipartUploadAsync(bucket, region, addSubPathIfPresent(path), uploadId, null, null);
+          client.abortMultipartUploadAsync(
+              bucket, region, addSubPathIfPresent(path), uploadId, null, null);
         } catch (Exception e2) {
           // ignore, because it is most likely the same as e (eg. network problem)
         }
@@ -218,18 +254,22 @@ public class MinioS3Client implements FolioS3Client {
   }
 
   @Override
-  public String write(String path, InputStream is, long size, PutObjectAdditionalOptions extraOptions) {
+  public String write(
+      String path, InputStream is, long size, PutObjectAdditionalOptions extraOptions) {
     log.debug("Writing with using Minio client");
     try (is) {
-      String obj = client.putObject(PutObjectArgs.builder()
-        .bucket(bucket)
-        .region(region)
-        .object(addSubPathIfPresent(path))
-        .stream(is, -1, MIN_MULTIPART_SIZE)
-        .extraHeaders(PutObjectAdditionalOptions.toMinioHeaders(extraOptions))
-        .build())
-        .get()
-        .object();
+      String obj =
+          client
+              .putObject(
+                  PutObjectArgs.builder()
+                      .bucket(bucket)
+                      .region(region)
+                      .object(addSubPathIfPresent(path))
+                      .stream(is, -1, MIN_MULTIPART_SIZE)
+                      .extraHeaders(PutObjectAdditionalOptions.toMinioHeaders(extraOptions))
+                      .build())
+              .get()
+              .object();
 
       return removeSubPathIfPresent(obj);
     } catch (Exception e) {
@@ -243,41 +283,52 @@ public class MinioS3Client implements FolioS3Client {
   }
 
   @Override
-  public String compose(String destination, List<String> sourceKeys, PutObjectAdditionalOptions extraOptions) {
+  public String compose(
+      String destination, List<String> sourceKeys, PutObjectAdditionalOptions extraOptions) {
     try {
-      String obj = client.composeObject(ComposeObjectArgs.builder()
-        .bucket(bucket)
-        .region(region)
-        .object(addSubPathIfPresent(destination))
-        .sources(sourceKeys.stream()
-          .map(this::addSubPathIfPresent)
-          .map(k -> ComposeSource.builder()
-            .bucket(bucket)
-            .region(region)
-            .object(k)
-            .build())
-          .toList())
-        .extraHeaders(PutObjectAdditionalOptions.toMinioHeaders(extraOptions))
-        .build())
-        .get()
-        .object();
+      String obj =
+          client
+              .composeObject(
+                  ComposeObjectArgs.builder()
+                      .bucket(bucket)
+                      .region(region)
+                      .object(addSubPathIfPresent(destination))
+                      .sources(
+                          sourceKeys.stream()
+                              .map(this::addSubPathIfPresent)
+                              .map(
+                                  k ->
+                                      ComposeSource.builder()
+                                          .bucket(bucket)
+                                          .region(region)
+                                          .object(k)
+                                          .build())
+                              .toList())
+                      .extraHeaders(PutObjectAdditionalOptions.toMinioHeaders(extraOptions))
+                      .build())
+              .get()
+              .object();
 
       return removeSubPathIfPresent(obj);
     } catch (Exception e) {
-      throw new S3ClientException("Error composing sources=[%s] into %s".formatted(sourceKeys.stream()
-        .collect(Collectors.joining(",")), destination), e);
+      throw new S3ClientException(
+          "Error composing sources=[%s] into %s"
+              .formatted(sourceKeys.stream().collect(Collectors.joining(",")), destination),
+          e);
     }
   }
 
   @Override
   public String remove(String path) {
     try {
-      client.removeObject(RemoveObjectArgs.builder()
-        .bucket(bucket)
-        .region(region)
-        .object(addSubPathIfPresent(path))
-        .build())
-        .get();
+      client
+          .removeObject(
+              RemoveObjectArgs.builder()
+                  .bucket(bucket)
+                  .region(region)
+                  .object(addSubPathIfPresent(path))
+                  .build())
+          .get();
 
       return path;
     } catch (Exception e) {
@@ -288,15 +339,19 @@ public class MinioS3Client implements FolioS3Client {
   @Override
   public List<String> remove(String... paths) {
     try {
-      var errors = client.removeObjects(RemoveObjectsArgs.builder()
-        .bucket(bucket)
-        .region(region)
-        .objects(Arrays.stream(paths)
-          .map(this::addSubPathIfPresent)
-          .map(DeleteObject::new)
-          .toList())
-        .build())
-        .iterator();
+      var errors =
+          client
+              .removeObjects(
+                  RemoveObjectsArgs.builder()
+                      .bucket(bucket)
+                      .region(region)
+                      .objects(
+                          Arrays.stream(paths)
+                              .map(this::addSubPathIfPresent)
+                              .map(DeleteObject::new)
+                              .toList())
+                      .build())
+              .iterator();
 
       if (errors.hasNext()) {
         throw new S3ClientException("Error deleting");
@@ -312,20 +367,25 @@ public class MinioS3Client implements FolioS3Client {
     try {
       List<String> list = new ArrayList<>();
 
-      client.listObjects(addArgs.apply(ListObjectsArgs.builder()
-        .bucket(bucket)
-        .region(region)
-        .prefix(addSubPathIfPresent(path)))
-        .build())
-        .iterator()
-        .forEachRemaining(itemResult -> {
-          try {
-            list.add(removeSubPathIfPresent(itemResult.get()
-              .objectName()));
-          } catch (Exception e) {
-            throw new S3ClientException("Error populating list of objects for path: " + path, e);
-          }
-        });
+      client
+          .listObjects(
+              addArgs
+                  .apply(
+                      ListObjectsArgs.builder()
+                          .bucket(bucket)
+                          .region(region)
+                          .prefix(addSubPathIfPresent(path)))
+                  .build())
+          .iterator()
+          .forEachRemaining(
+              itemResult -> {
+                try {
+                  list.add(removeSubPathIfPresent(itemResult.get().objectName()));
+                } catch (Exception e) {
+                  throw new S3ClientException(
+                      "Error populating list of objects for path: " + path, e);
+                }
+              });
       return list;
     } catch (Exception e) {
       throw new S3ClientException("Error getting list of objects for path: " + path, e);
@@ -338,30 +398,34 @@ public class MinioS3Client implements FolioS3Client {
   }
 
   @Override
+  public List<String> list(String path, int maxKeys, String startAfter) {
+    return list(
+        path,
+        args -> {
+          if (startAfter != null && !startAfter.isEmpty()) {
+            args = args.startAfter(addSubPathIfPresent(startAfter));
+          }
+
+          return args.maxKeys(maxKeys);
+        });
+  }
+
+  @Override
   public List<String> listRecursive(String path) {
     return list(path, args -> args.recursive(true));
   }
 
   @Override
-  public List<String> list(String path, int maxKeys, String startAfter) {
-    return list(path, args -> {
-      if (startAfter != null && !startAfter.isEmpty()) {
-        args = args.startAfter(addSubPathIfPresent(startAfter));
-      }
-
-      return args.maxKeys(maxKeys);
-    });
-  }
-
-  @Override
   public InputStream read(String path) {
     try {
-     return client.getObject(GetObjectArgs.builder()
-        .bucket(bucket)
-        .region(region)
-        .object(addSubPathIfPresent(path))
-        .build())
-        .get();
+      return client
+          .getObject(
+              GetObjectArgs.builder()
+                  .bucket(bucket)
+                  .region(region)
+                  .object(addSubPathIfPresent(path))
+                  .build())
+          .get();
     } catch (Exception e) {
       throw new S3ClientException("Error creating input stream for path: " + path, e);
     }
@@ -370,13 +434,15 @@ public class MinioS3Client implements FolioS3Client {
   @Override
   public long getSize(String path) {
     try {
-      return client.statObject(StatObjectArgs.builder()
-        .bucket(bucket)
-        .region(region)
-        .object(addSubPathIfPresent(path))
-        .build())
-        .get()
-        .size();
+      return client
+          .statObject(
+              StatObjectArgs.builder()
+                  .bucket(bucket)
+                  .region(region)
+                  .object(addSubPathIfPresent(path))
+                  .build())
+          .get()
+          .size();
     } catch (Exception e) {
       throw new S3ClientException("Error getting size: " + path, e);
     }
@@ -400,131 +466,172 @@ public class MinioS3Client implements FolioS3Client {
   @Override
   public String getPresignedUrl(String path, Method method, int expiryTime, TimeUnit expiryUnit) {
     try {
-      return client.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
-        .bucket(bucket)
-        .object(addSubPathIfPresent(path))
-        .method(method)
-        .expiry(expiryTime, expiryUnit)
-        .build());
+      return client.getPresignedObjectUrl(
+          GetPresignedObjectUrlArgs.builder()
+              .bucket(bucket)
+              .object(addSubPathIfPresent(path))
+              .method(method)
+              .expiry(expiryTime, expiryUnit)
+              .build());
     } catch (Exception e) {
       throw new S3ClientException(
-        "Error getting presigned url for object: " + path + ", method: " + method,
-        e
-      );
+          "Error getting presigned url for object: " + path + ", method: " + method, e);
     }
   }
 
   @Override
   public String initiateMultipartUpload(String path) {
     try {
-      return client.createMultipartUploadAsync(bucket, region, addSubPathIfPresent(path), null, null)
-        .get()
-        .result()
-        .uploadId();
+      return client
+          .createMultipartUploadAsync(bucket, region, addSubPathIfPresent(path), null, null)
+          .get()
+          .result()
+          .uploadId();
     } catch (Exception e) {
       throw new S3ClientException("Error initiating multipart upload for object: " + path, e);
     }
   }
 
+  /**
+   * Generates a presigned URL for uploading a single part in a multipart upload.
+   *
+   * @param path the object key in the S3-compatible storage
+   * @param uploadId multipart upload identifier obtained from {@link
+   *     #initiateMultipartUpload(String)}
+   * @param partNumber number of the part to be uploaded
+   * @return presigned URL that can be used to upload the specified part
+   */
   @Override
-  public String getPresignedMultipartUploadUrl(
-    String path,
-    String uploadId,
-    int partNumber
-  ) {
+  public String getPresignedMultipartUploadUrl(String path, String uploadId, int partNumber) {
     try {
-      return client.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
-        .bucket(bucket)
-        .object(addSubPathIfPresent(path))
-        .method(Method.PUT)
-        .expiry(EXPIRATION_TIME_IN_MINUTES, TimeUnit.MINUTES)
-        .extraQueryParams(Map.of(PARAM_MULTIPART_PART_NUMBER, String.valueOf(partNumber), PARAM_MULTIPART_UPLOAD_ID, uploadId))
-        .build());
+      return client.getPresignedObjectUrl(
+          GetPresignedObjectUrlArgs.builder()
+              .bucket(bucket)
+              .object(addSubPathIfPresent(path))
+              .method(Method.PUT)
+              .expiry(EXPIRATION_TIME_IN_MINUTES, TimeUnit.MINUTES)
+              .extraQueryParams(
+                  Map.of(
+                      PARAM_MULTIPART_PART_NUMBER,
+                      String.valueOf(partNumber),
+                      PARAM_MULTIPART_UPLOAD_ID,
+                      uploadId))
+              .build());
     } catch (Exception e) {
       throw new S3ClientException(
-        "Error getting presigned url for part #" + partNumber + "of upload ID: " + uploadId,
-        e
-      );
+          "Error getting presigned url for part #" + partNumber + "of upload ID: " + uploadId, e);
     }
   }
 
+  /**
+   * Uploads a single multipart upload part using the given local file.
+   *
+   * @param path the object key in the S3-compatible storage
+   * @param uploadId multipart upload identifier
+   * @param partNumber number of the part being uploaded
+   * @param filename path to the local file that contains the part data
+   * @return ETag value returned by the storage for the uploaded part
+   */
   @Override
-  public String uploadMultipartPart(
-    String path,
-    String uploadId,
-    int partNumber,
-    String filename
-  ) {
+  public String uploadMultipartPart(String path, String uploadId, int partNumber, String filename) {
     try {
       InputStream stream = new FileInputStream(filename);
-      return client.putObject(
-          PutObjectArgs.builder()
-            .bucket(bucket)
-            .region(region)
-            .object(addSubPathIfPresent(path))
-            .stream(stream, -1, MAX_PART_SIZE)
-            .extraQueryParams(Map.of(PARAM_MULTIPART_UPLOAD_ID, uploadId, PARAM_MULTIPART_PART_NUMBER, String.valueOf(partNumber)))
-            .build()
-        )
-        .get()
-        .etag();
+      return client
+          .putObject(
+              PutObjectArgs.builder()
+                  .bucket(bucket)
+                  .region(region)
+                  .object(addSubPathIfPresent(path))
+                  .stream(stream, -1, MAX_PART_SIZE)
+                  .extraQueryParams(
+                      Map.of(
+                          PARAM_MULTIPART_UPLOAD_ID,
+                          uploadId,
+                          PARAM_MULTIPART_PART_NUMBER,
+                          String.valueOf(partNumber)))
+                  .build())
+          .get()
+          .etag();
     } catch (Exception e) {
       throw new S3ClientException(
-        "Cannot upload part # " + partNumber + " for upload ID: " + uploadId,
-        e
-      );
+          "Cannot upload part # " + partNumber + " for upload ID: " + uploadId, e);
     }
   }
 
+  /**
+   * Aborts an in-progress multipart upload for the given object.
+   *
+   * @param path the object key in the S3-compatible storage
+   * @param uploadId multipart upload identifier to abort
+   */
   @Override
-  public void abortMultipartUpload(
-    String path,
-    String uploadId
-  ) {
+  public void abortMultipartUpload(String path, String uploadId) {
     try {
-       client.abortMultipartUploadAsync(bucket, region, addSubPathIfPresent(path), uploadId, null, null).get();
+      client
+          .abortMultipartUploadAsync(
+              bucket, region, addSubPathIfPresent(path), uploadId, null, null)
+          .get();
     } catch (Exception e) {
-      throw new S3ClientException(
-        "Error getting presigned url for upload ID: " + uploadId,
-        e
-      );
+      throw new S3ClientException("Error getting presigned url for upload ID: " + uploadId, e);
     }
   }
 
+  /**
+   * Completes a multipart upload by assembling all uploaded parts into a single object.
+   *
+   * @param path the final object key in the S3-compatible storage
+   * @param uploadId multipart upload identifier
+   * @param partEtags list of ETag values for all uploaded parts in order
+   */
   @Override
-  public void completeMultipartUpload(
-    String path,
-    String uploadId,
-    List<String> partETags
-  ) {
+  public void completeMultipartUpload(String path, String uploadId, List<String> partEtags) {
     try {
-      client.completeMultipartUploadAsync(
-        bucket,
-        region,
-        addSubPathIfPresent(path),
-        uploadId,
-        IntStream.range(0, partETags.size())
-          .mapToObj(i -> new Part(i + 1, partETags.get(i)))
-          .toArray(Part[]::new),
-        null,
-        null
-      ).get();
+      client
+          .completeMultipartUploadAsync(
+              bucket,
+              region,
+              addSubPathIfPresent(path),
+              uploadId,
+              IntStream.range(0, partEtags.size())
+                  .mapToObj(i -> new Part(i + 1, partEtags.get(i)))
+                  .toArray(Part[]::new),
+              null,
+              null)
+          .get();
     } catch (Exception e) {
-      throw new S3ClientException(
-        "Error getting presigned url for upload ID: " + uploadId,
-        e
-      );
+      throw new S3ClientException("Error getting presigned url for upload ID: " + uploadId, e);
     }
   }
 
+  /**
+   * Adds the configured sub-path prefix to the given object key if a sub-path is configured.
+   *
+   * @param path original object key
+   * @return the object key prefixed with {@code subPath} if it is not empty; otherwise the original
+   *     key
+   */
   protected String addSubPathIfPresent(String path) {
-    return fixPathWithIncorrectSymbols(isEmpty(subPath) ? path : String.format("%s/%s", subPath, path));
+    return fixPathWithIncorrectSymbols(
+        isEmpty(subPath) ? path : String.format("%s/%s", subPath, path));
   }
 
+  /**
+   * Removes the configured sub-path prefix from the given object key, if it is present.
+   *
+   * @param path object key that may contain the {@code subPath} prefix
+   * @return the object key without the {@code subPath} prefix, or the original key if no prefix is
+   *     configured
+   */
   protected String removeSubPathIfPresent(String path) {
     return isEmpty(subPath) ? path : replaceOnce(path, subPath + "/", EMPTY);
   }
 
+  /**
+   * Normalizes the given object key by removing duplicate slashes.
+   *
+   * @param path object key to normalize
+   * @return normalized object key with multiple consecutive slashes collapsed to a single slash
+   */
   protected String fixPathWithIncorrectSymbols(String path) {
     return path.replace("//", "/");
   }
