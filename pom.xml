@@ -34,7 +34,6 @@
       **/src/main/java/org/folio/s3/client/S3ClientProperties.java
     </sonar.exclusions>
   </properties>
-
   <dependencies>
     <dependency>
       <groupId>org.projectlombok</groupId>
