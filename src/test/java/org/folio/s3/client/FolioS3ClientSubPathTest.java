@@ -46,7 +46,6 @@ import java.util.stream.Stream;
 
 @Log4j2
 class FolioS3ClientSubPathTest {
-
   private static LocalStackContainer localstack;
   public static String region;
   public static String accessKey;
@@ -66,7 +65,7 @@ class FolioS3ClientSubPathTest {
 
   @BeforeAll
   public static void setUp() {
-    DockerImageName localstackImage = DockerImageName.parse("localstack/localstack:s3-latest");
+    DockerImageName localstackImage = DockerImageName.parse("localstack/localstack:3.3.0");
 
     localstack = new LocalStackContainer(localstackImage)
             .withStartupTimeout(Duration.of(1, MINUTES))
