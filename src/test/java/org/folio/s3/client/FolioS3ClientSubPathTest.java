@@ -46,6 +46,7 @@ import java.util.stream.Stream;
 
 @Log4j2
 class FolioS3ClientSubPathTest {
+
   private static LocalStackContainer localstack;
   public static String region;
   public static String accessKey;
