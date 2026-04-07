@@ -65,7 +65,7 @@ class FolioS3ClientSubPathTest {
 
   @BeforeAll
   public static void setUp() {
-    DockerImageName localstackImage = DockerImageName.parse("localstack/localstack:s3-latest");
+    DockerImageName localstackImage = DockerImageName.parse("localstack/localstack:3.3.0");
 
     localstack = new LocalStackContainer(localstackImage)
             .withStartupTimeout(Duration.of(1, MINUTES))
