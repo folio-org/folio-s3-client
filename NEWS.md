@@ -1,4 +1,7 @@
-## v3.0.0 - In Progress
+## v3.1.0 - In Progress
+
+## v3.0.0 - Released
+This release contains improvement client configuration and new features
 
 ### Stories
 * **BREAKING** [FOLS3CL-40](https://folio-org.atlassian.net/browse/FOLS3CL-40) Consistently remove subPaths from returned paths in write, remove, and append operations across both Minio and AWS S3 clients
