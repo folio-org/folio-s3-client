@@ -1,5 +1,8 @@
 ## v3.1.0 - In Progress
 
+## v3.0.1 - Released
+This release contains dependency updates
+
 ## v3.0.0 - Released
 This release contains improvement client configuration and new features
 
