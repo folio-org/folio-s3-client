@@ -47,6 +47,8 @@ import io.minio.credentials.StaticProvider;
 import io.minio.messages.DeleteObject;
 import io.minio.messages.Part;
 import lombok.extern.log4j.Log4j2;
+import okhttp3.ConnectionPool;
+import okhttp3.OkHttpClient;
 
 @Log4j2
 // 2142: we wrap and rethrow InterruptedException as S3ClientException
@@ -88,6 +90,16 @@ public class MinioS3Client implements FolioS3Client {
       .endpoint(endpoint);
     if (StringUtils.isNotBlank(region)) {
       builder.region(region);
+    }
+
+    var idleKeepAliveSeconds = properties.getIdleKeepAliveSeconds();
+    if (idleKeepAliveSeconds != null) {
+      log.info("Configuring OkHttp connection pool with idle keep-alive of {}s", idleKeepAliveSeconds);
+      // 5 = OkHttp default maxIdleConnections; only the keep-alive duration is customised
+      var httpClient = new OkHttpClient.Builder()
+        .connectionPool(new ConnectionPool(5, idleKeepAliveSeconds, TimeUnit.SECONDS))
+        .build();
+      builder.httpClient(httpClient);
     }
 
     Provider provider;
