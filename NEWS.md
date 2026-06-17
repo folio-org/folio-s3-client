@@ -1,5 +1,8 @@
 ## v3.1.0 - In Progress
 
+### Stories
+* [MSEARCH-1245](https://issues.folio.org/browse/MSEARCH-1245) Provide http client configuration for MinioS3Client/AwsS3Client
+
 ## v3.0.0 - Released
 This release contains improvement client configuration and new features
 
