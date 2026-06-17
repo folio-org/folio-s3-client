@@ -57,4 +57,25 @@ public class S3ClientProperties {
    * — which always go through the Minio client, even when {@link AwsS3Client} is used.
    */
   private Integer idleKeepAliveSeconds;
+
+  /**
+   * Maximum number of idle connections the OkHttp connection pool retains.
+   *
+   * <p>If {@code null}, defaults to 5 (OkHttp built-in default). Only takes effect when
+   * {@link #idleKeepAliveSeconds} is also set. Increase this when a single shared
+   * {@link FolioS3Client} instance services many concurrent callers so that connections
+   * from finished requests are available for immediate reuse.
+   */
+  private Integer maxIdleConnections;
+
+  /**
+   * Maximum number of concurrent HTTP requests OkHttp will dispatch to the same host
+   * (maps to {@code OkHttp Dispatcher.maxRequestsPerHost}).
+   *
+   * <p>If {@code null}, defaults to 5 (OkHttp built-in default). Only takes effect when
+   * {@link #idleKeepAliveSeconds} is also set. When a shared client handles more than 5
+   * concurrent callers, OkHttp queues the excess requests, which blocks the calling threads.
+   * Set this to at least the expected concurrency to avoid thread starvation.
+   */
+  private Integer maxRequestsPerHost;
 }

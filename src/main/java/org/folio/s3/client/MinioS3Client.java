@@ -48,6 +48,7 @@ import io.minio.messages.DeleteObject;
 import io.minio.messages.Part;
 import lombok.extern.log4j.Log4j2;
 import okhttp3.ConnectionPool;
+import okhttp3.Dispatcher;
 import okhttp3.OkHttpClient;
 
 @Log4j2
@@ -94,10 +95,17 @@ public class MinioS3Client implements FolioS3Client {
 
     var idleKeepAliveSeconds = properties.getIdleKeepAliveSeconds();
     if (idleKeepAliveSeconds != null) {
-      log.info("Configuring OkHttp connection pool with idle keep-alive of {}s", idleKeepAliveSeconds);
-      // 5 = OkHttp default maxIdleConnections; only the keep-alive duration is customised
+      int maxIdle = properties.getMaxIdleConnections() != null ? properties.getMaxIdleConnections() : 5;
+      log.info("Configuring OkHttp connection pool: idleKeepAlive={}s maxIdleConnections={}", idleKeepAliveSeconds, maxIdle);
+      var pool = new ConnectionPool(maxIdle, idleKeepAliveSeconds, TimeUnit.SECONDS);
+      var dispatcher = new Dispatcher();
+      if (properties.getMaxRequestsPerHost() != null) {
+        log.info("Configuring OkHttp Dispatcher: maxRequestsPerHost={}", properties.getMaxRequestsPerHost());
+        dispatcher.setMaxRequestsPerHost(properties.getMaxRequestsPerHost());
+      }
       var httpClient = new OkHttpClient.Builder()
-        .connectionPool(new ConnectionPool(5, idleKeepAliveSeconds, TimeUnit.SECONDS))
+        .connectionPool(pool)
+        .dispatcher(dispatcher)
         .build();
       builder.httpClient(httpClient);
     }
