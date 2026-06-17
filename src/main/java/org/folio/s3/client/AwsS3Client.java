@@ -6,6 +6,7 @@ import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
 import java.net.URI;
+import java.time.Duration;
 import java.util.concurrent.Executors;
 
 import org.folio.s3.exception.S3ClientException;
@@ -26,6 +27,7 @@ import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartCopyRequest;
 import software.amazon.awssdk.services.s3.model.UploadPartRequest;
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.transfer.s3.S3TransferManager;
 import software.amazon.awssdk.transfer.s3.model.UploadRequest;
 
@@ -61,13 +63,29 @@ public class AwsS3Client extends MinioS3Client {
 
     credentialsProvider = getCredentialsProvider(accessKey, secretKey);
 
-    return S3AsyncClient.builder()
-            .endpointOverride(URI.create(endpoint))
-            .forcePathStyle(s3ClientProperties.isForcePathStyle())
-            .region(Region.of(region))
-            .credentialsProvider(credentialsProvider)
-            .multipartEnabled(true)
-            .build();
+    var s3Builder = S3AsyncClient.builder()
+        .endpointOverride(URI.create(endpoint))
+        .forcePathStyle(s3ClientProperties.isForcePathStyle())
+        .region(Region.of(region))
+        .credentialsProvider(credentialsProvider)
+        .multipartEnabled(true);
+
+    var idleKeepAlive = s3ClientProperties.getIdleKeepAliveSeconds();
+    var maxConcurrency = s3ClientProperties.getMaxRequestsPerHost();
+    if (idleKeepAlive != null || maxConcurrency != null) {
+      var httpBuilder = NettyNioAsyncHttpClient.builder();
+      if (idleKeepAlive != null) {
+        log.info("Configuring Netty HTTP client: connectionMaxIdleTime={}s", idleKeepAlive);
+        httpBuilder.connectionMaxIdleTime(Duration.ofSeconds(idleKeepAlive));
+      }
+      if (maxConcurrency != null) {
+        log.info("Configuring Netty HTTP client: maxConcurrency={}", maxConcurrency);
+        httpBuilder.maxConcurrency(maxConcurrency);
+      }
+      s3Builder.httpClient(httpBuilder.build());
+    }
+
+    return s3Builder.build();
   }
 
   @Override
