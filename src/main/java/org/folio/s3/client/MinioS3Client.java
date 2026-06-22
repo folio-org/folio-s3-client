@@ -135,6 +135,7 @@ public class MinioS3Client implements FolioS3Client {
         .get();
       if (Boolean.TRUE.equals(exists)) {
         log.debug("Bucket already exists.");
+        return;
       }
       client.makeBucket(MakeBucketArgs.builder()
         .bucket(bucket)
