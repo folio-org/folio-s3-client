@@ -47,6 +47,9 @@ import io.minio.credentials.StaticProvider;
 import io.minio.messages.DeleteObject;
 import io.minio.messages.Part;
 import lombok.extern.log4j.Log4j2;
+import okhttp3.ConnectionPool;
+import okhttp3.Dispatcher;
+import okhttp3.OkHttpClient;
 
 @Log4j2
 // 2142: we wrap and rethrow InterruptedException as S3ClientException
@@ -90,6 +93,23 @@ public class MinioS3Client implements FolioS3Client {
       builder.region(region);
     }
 
+    var idleKeepAliveSeconds = properties.getIdleKeepAliveSeconds();
+    if (idleKeepAliveSeconds != null) {
+      int maxIdle = properties.getMaxIdleConnections() != null ? properties.getMaxIdleConnections() : 5;
+      log.info("Configuring OkHttp connection pool: idleKeepAlive={}s maxIdleConnections={}", idleKeepAliveSeconds, maxIdle);
+      var pool = new ConnectionPool(maxIdle, idleKeepAliveSeconds, TimeUnit.SECONDS);
+      var dispatcher = new Dispatcher();
+      if (properties.getMaxRequestsPerHost() != null) {
+        log.info("Configuring OkHttp Dispatcher: maxRequestsPerHost={}", properties.getMaxRequestsPerHost());
+        dispatcher.setMaxRequestsPerHost(properties.getMaxRequestsPerHost());
+      }
+      var httpClient = new OkHttpClient.Builder()
+        .connectionPool(pool)
+        .dispatcher(dispatcher)
+        .build();
+      builder.httpClient(httpClient);
+    }
+
     Provider provider;
     if (StringUtils.isNotBlank(accessKey) && StringUtils.isNotBlank(secretKey)) {
       provider = new StaticProvider(accessKey, secretKey, null);
@@ -115,6 +135,7 @@ public class MinioS3Client implements FolioS3Client {
         .get();
       if (Boolean.TRUE.equals(exists)) {
         log.debug("Bucket already exists.");
+        return;
       }
       client.makeBucket(MakeBucketArgs.builder()
         .bucket(bucket)
