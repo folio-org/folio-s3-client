@@ -3,6 +3,7 @@
 ### Stories
 * [MSEARCH-1245](https://issues.folio.org/browse/MSEARCH-1245) Provide http client configuration for MinioS3Client/AwsS3Client
 * [MSEARCH-1245](https://issues.folio.org/browse/MSEARCH-1245) Fix bucket creation
+* [FOLIO-4553](https://folio-org.atlassian.net/browse/FOLIO-4553) Set "permissions: contents: read" in maven.yml
 
 ## v3.0.0 - Released
 This release contains improvement client configuration and new features
